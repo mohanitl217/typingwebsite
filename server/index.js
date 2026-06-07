@@ -212,13 +212,23 @@ app.get('/api/admin/results', authAdmin, (req, res) => {
 
 // ---------- Serve built client in production ----------
 const distDir = path.join(__dirname, '..', 'dist')
-if (fs.existsSync(distDir)) {
-  app.use(express.static(distDir))
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distDir, 'index.html'))
-  })
-}
+const indexHtml = path.join(distDir, 'index.html')
+app.use(express.static(distDir))
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'Not found' })
+  }
+  if (fs.existsSync(indexHtml)) {
+    return res.sendFile(indexHtml)
+  }
+  res
+    .status(503)
+    .send(
+      '<h1>TypeMaster</h1><p>The frontend has not been built yet. Run <code>npm run build</code> (this creates the <code>dist</code> folder) and restart the app.</p>',
+    )
+})
 
-app.listen(PORT, () => {
-  console.log(`TypeMaster API running on http://localhost:${PORT}`)
+// Bind to 0.0.0.0 so hosting platforms can route external traffic.
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`TypeMaster running on port ${PORT}`)
 })
