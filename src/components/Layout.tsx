@@ -27,6 +27,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <TopLink to="/learn/home-row-1">Learn Typing</TopLink>
             <TopLink to="/test">Take Test</TopLink>
             <TopLink to="/numbers">Number Typing</TopLink>
+            <TopLink to="/hindi/krutidev/learn/kd-home-1">Hindi (KrutiDev)</TopLink>
           </nav>
 
           <div className="flex items-center gap-2">

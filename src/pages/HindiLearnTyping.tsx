@@ -1,0 +1,436 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { hindiLessons, getHindiLesson } from '../data/hindiLessons'
+import VirtualKeyboard from '../components/VirtualKeyboard'
+import StatBar from '../components/StatBar'
+import ResultModal from '../components/ResultModal'
+import TypingText from '../components/TypingText'
+import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
+import { api, getStoredUser } from '../api'
+
+const STAGES = ['Read Instructions', 'Learn Keys', 'Practice Words', 'Type Paragraphs'] as const
+
+const FONTS = [
+  { id: 'krutidev', label: 'KrutiDev', family: '"KrutiDev", "Kruti Dev 010", sans-serif' },
+  { id: 'devlys', label: 'DevLys', family: '"DevLys", "DevLys 010", sans-serif' },
+] as const
+
+export default function HindiLearnTyping() {
+  const { lessonId } = useParams()
+  const navigate = useNavigate()
+  const lesson = getHindiLesson(lessonId || '') || hindiLessons[0]
+  const lessonIndex = hindiLessons.findIndex((l) => l.id === lesson.id)
+
+  const [stage, setStage] = useState(0)
+  const [exIndex, setExIndex] = useState(0)
+  const [fontSize, setFontSize] = useState(26)
+  const [bold, setBold] = useState(false)
+  const [fontId, setFontId] = useState<(typeof FONTS)[number]['id']>('krutidev')
+  const [showKeyboard, setShowKeyboard] = useState(true)
+  const [showResult, setShowResult] = useState(false)
+  const [showStatusBar, setShowStatusBar] = useState(false)
+
+  const fontFamily = FONTS.find((f) => f.id === fontId)!.family
+
+  const [settings, setSettings] = useState({
+    backspaceMode: 'full' as BackspaceMode,
+    moveOnError: true,
+    playSounds: false,
+  })
+
+  const exercises = useMemo(() => {
+    if (stage === 1) return lesson.drills
+    if (stage === 2) {
+      const lines: string[] = []
+      for (let i = 0; i < lesson.words.length; i += 8) {
+        lines.push(lesson.words.slice(i, i + 8).join(' '))
+      }
+      return lines
+    }
+    if (stage === 3) return lesson.paragraphs
+    return []
+  }, [stage, lesson])
+
+  const target = exercises[exIndex] || ''
+  const session = useTypingSession(target, settings)
+  const surfaceRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    session.reset()
+    if (stage > 0) surfaceRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, stage])
+
+  useEffect(() => {
+    if (session.isDone && session.finishedAt) {
+      setShowResult(true)
+      const user = getStoredUser()
+      api
+        .saveResult({
+          userId: user?.id ?? null,
+          module: `hindi-krutidev-learn:${lesson.id}:${STAGES[stage]}`,
+          wpm: session.stats.wpm,
+          accuracy: session.stats.accuracy,
+          errors: session.stats.errors,
+          durationSec: session.stats.elapsedSec,
+        })
+        .catch(() => {})
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.isDone, session.finishedAt])
+
+  const nextChar = target[session.typed.length]
+
+  function changeLesson(dir: -1 | 1) {
+    const ni = lessonIndex + dir
+    if (ni >= 0 && ni < hindiLessons.length) {
+      navigate(`/hindi/krutidev/learn/${hindiLessons[ni].id}`)
+      setStage(0)
+      setExIndex(0)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Lesson header + nav */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-accent-600">
+            Hindi (KrutiDev / DevLys) • Lesson {lessonIndex + 1} of {hindiLessons.length}
+          </div>
+          <h1 className="text-xl font-extrabold text-slate-900">{lesson.title}</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="btn-ghost" disabled={lessonIndex === 0} onClick={() => changeLesson(-1)}>
+            ‹ Prev
+          </button>
+          <select
+            className="input w-auto"
+            value={lesson.id}
+            onChange={(e) => {
+              navigate(`/hindi/krutidev/learn/${e.target.value}`)
+              setStage(0)
+              setExIndex(0)
+            }}
+          >
+            {hindiLessons.map((l, i) => (
+              <option key={l.id} value={l.id}>
+                {i + 1}. {l.title}
+              </option>
+            ))}
+          </select>
+          <button
+            className="btn-ghost"
+            disabled={lessonIndex === hindiLessons.length - 1}
+            onClick={() => changeLesson(1)}
+          >
+            Next ›
+          </button>
+        </div>
+      </div>
+
+      {/* Stage tabs */}
+      <div className="flex flex-wrap items-center gap-2">
+        {STAGES.map((s, i) => (
+          <button
+            key={s}
+            onClick={() => {
+              setStage(i)
+              setExIndex(0)
+            }}
+            className={[
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition',
+              i === stage
+                ? 'bg-brand-600 text-white shadow'
+                : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50',
+            ].join(' ')}
+          >
+            <span
+              className={[
+                'grid h-5 w-5 place-items-center rounded-full text-[11px]',
+                i === stage ? 'bg-white/25' : 'bg-slate-100 text-slate-500',
+              ].join(' ')}
+            >
+              {i + 1}
+            </span>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[200px_1fr_220px]">
+        {/* Left: font + finger guide */}
+        <aside className="space-y-4">
+          <div className="card p-4">
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Select Font</div>
+            <div className="mt-2 space-y-1">
+              {FONTS.map((f) => (
+                <label key={f.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="hindi-font"
+                    checked={fontId === f.id}
+                    onChange={() => setFontId(f.id)}
+                  />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+            <label className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2 text-sm">
+              <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
+              Bold
+            </label>
+          </div>
+          <FingerGuide />
+        </aside>
+
+        {/* Center */}
+        <div className="space-y-3">
+          {stage === 0 ? (
+            <Instructions lesson={lesson} fontFamily={fontFamily} onStart={() => setStage(1)} />
+          ) : (
+            <>
+              <TypingText
+                target={target}
+                typed={session.typed}
+                highlight="word-error"
+                fontSize={fontSize}
+                bold={bold}
+                showScrollbar
+                autoScroll={false}
+                fontFamily={fontFamily}
+                className="min-h-[120px]"
+              />
+
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    className="btn-ghost px-2"
+                    disabled={exIndex === 0}
+                    onClick={() => setExIndex((i) => Math.max(0, i - 1))}
+                  >
+                    «
+                  </button>
+                  <select
+                    className="input w-auto"
+                    value={exIndex}
+                    onChange={(e) => setExIndex(Number(e.target.value))}
+                  >
+                    {exercises.map((_, i) => (
+                      <option key={i} value={i}>
+                        Exercise {i + 1} / {exercises.length}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn-ghost px-2"
+                    disabled={exIndex >= exercises.length - 1}
+                    onClick={() => setExIndex((i) => Math.min(exercises.length - 1, i + 1))}
+                  >
+                    »
+                  </button>
+                </div>
+                <FontSizer fontSize={fontSize} setFontSize={setFontSize} />
+              </div>
+
+              {/* typing surface (rendered in the selected legacy font) */}
+              <div
+                ref={surfaceRef}
+                tabIndex={0}
+                onKeyDown={session.onKeyDown}
+                className="min-h-[120px] cursor-text rounded-xl bg-slate-900 p-4 text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
+                style={{ fontSize, whiteSpace: 'pre-wrap', fontFamily }}
+                onClick={() => surfaceRef.current?.focus()}
+              >
+                {session.typed.length === 0 && (
+                  <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Click here and start typing…
+                  </span>
+                )}
+                {session.typed.split('').map((ch, i) => (
+                  <span
+                    key={i}
+                    className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                  >
+                    {ch === '\n' ? '\u21B5\n' : ch}
+                  </span>
+                ))}
+                <span className="animate-pulse text-brand-400">▎</span>
+              </div>
+
+              {showStatusBar && <StatBar stats={session.stats} />}
+
+              {showKeyboard && (
+                <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} glyphFont={fontFamily} />
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Right: settings */}
+        <aside className="space-y-4">
+          <div className="card p-4">
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Settings</div>
+
+            <div className="mt-3">
+              <div className="text-xs font-semibold text-slate-500">Backspace Options</div>
+              <div className="mt-1 space-y-1">
+                {(
+                  [
+                    ['full', 'Full Backspace'],
+                    ['word', 'One Word Backspace'],
+                    ['off', 'Deactivate Backspace'],
+                  ] as [BackspaceMode, string][]
+                ).map(([val, label]) => (
+                  <label key={val} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="bs"
+                      checked={settings.backspaceMode === val}
+                      onChange={() => setSettings((s) => ({ ...s, backspaceMode: val }))}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showStatusBar}
+                  onChange={(e) => setShowStatusBar(e.target.checked)}
+                />
+                Show Status Bar
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showKeyboard}
+                  onChange={(e) => setShowKeyboard(e.target.checked)}
+                />
+                Show Keyboard
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.playSounds}
+                  onChange={(e) => setSettings((s) => ({ ...s, playSounds: e.target.checked }))}
+                />
+                Play Sounds
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.moveOnError}
+                  onChange={(e) => setSettings((s) => ({ ...s, moveOnError: e.target.checked }))}
+                />
+                Move on Error
+              </label>
+            </div>
+          </div>
+
+          {!getStoredUser() && (
+            <div className="card bg-brand-50 p-4 text-sm text-brand-800 ring-brand-200">
+              <Link to="/login" className="font-semibold underline">
+                Sign in
+              </Link>{' '}
+              to save your progress and reports.
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {showResult && (
+        <ResultModal
+          title={`${STAGES[stage]} — Report`}
+          stats={session.stats}
+          onClose={() => setShowResult(false)}
+          onRetry={() => {
+            setShowResult(false)
+            session.reset()
+            surfaceRef.current?.focus()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function Instructions({
+  lesson,
+  fontFamily,
+  onStart,
+}: {
+  lesson: ReturnType<typeof getHindiLesson>
+  fontFamily: string
+  onStart: () => void
+}) {
+  if (!lesson) return null
+  return (
+    <div className="card p-6">
+      <h2 className="text-lg font-bold text-slate-900">How to do this lesson</h2>
+      <ul className="mt-3 space-y-2">
+        {lesson.instructions.map((line, i) => (
+          <li key={i} className="flex gap-3 text-sm text-slate-600">
+            <span className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-700">
+              {i + 1}
+            </span>
+            {line}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {lesson.keys.map((k) => {
+          const single = /^[a-z;]$/i.test(k)
+          return (
+            <span
+              key={k}
+              className="grid h-10 min-w-[40px] place-items-center rounded-md bg-slate-900 px-3 text-white"
+              style={single ? { fontFamily, fontSize: 20 } : { fontSize: 12 }}
+            >
+              {single ? k : k.replace('ShiftLeft', 'Shift').replace('ShiftRight', 'Shift')}
+            </span>
+          )
+        })}
+      </div>
+      <button className="btn-primary mt-5" onClick={onStart}>
+        Start practising →
+      </button>
+    </div>
+  )
+}
+
+function FingerGuide() {
+  return (
+    <div className="card p-4">
+      <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Finger placement</div>
+      <p className="mt-2 text-xs text-slate-500">
+        Same QWERTY home row as English. Index fingers feel the bumps on{' '}
+        <b className="text-slate-700">F</b> and <b className="text-slate-700">J</b>; each key prints a
+        Devanagari glyph.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-center text-[11px] font-semibold">
+        <div className="rounded-lg bg-rose-100 py-2 text-rose-700">Pinky<br />A · ;</div>
+        <div className="rounded-lg bg-amber-100 py-2 text-amber-700">Ring<br />S · L</div>
+        <div className="rounded-lg bg-emerald-100 py-2 text-emerald-700">Middle<br />D · K</div>
+        <div className="rounded-lg bg-sky-100 py-2 text-sky-700">Index<br />F · J</div>
+      </div>
+    </div>
+  )
+}
+
+function FontSizer({ fontSize, setFontSize }: { fontSize: number; setFontSize: (n: number) => void }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button className="btn-ghost px-2" onClick={() => setFontSize(Math.max(14, fontSize - 2))}>
+        A-
+      </button>
+      <span className="w-6 text-center text-sm font-semibold text-slate-500">{fontSize}</span>
+      <button className="btn-ghost px-2" onClick={() => setFontSize(Math.min(48, fontSize + 2))}>
+        A+
+      </button>
+    </div>
+  )
+}

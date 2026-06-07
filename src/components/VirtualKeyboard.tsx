@@ -5,9 +5,14 @@ interface Props {
   nextChar?: string
   /** keys to emphasise for the current lesson */
   activeKeys?: string[]
+  /**
+   * When set, character keycaps are rendered using this CSS font-family so that
+   * legacy glyph fonts (KrutiDev/DevLys) display the Devanagari glyph for each key.
+   */
+  glyphFont?: string
 }
 
-export default function VirtualKeyboard({ nextChar, activeKeys = [] }: Props) {
+export default function VirtualKeyboard({ nextChar, activeKeys = [], glyphFont }: Props) {
   const target = nextChar ? lookupChar(nextChar) : null
   const highlightCode = target?.code
   const needsShift = target?.shift
@@ -21,6 +26,7 @@ export default function VirtualKeyboard({ nextChar, activeKeys = [] }: Props) {
               <Key
                 key={key.code}
                 def={key}
+                glyphFont={glyphFont}
                 isNext={
                   highlightCode === key.code ||
                   Boolean(needsShift && (key.code === 'ShiftLeft' || key.code === 'ShiftRight'))
@@ -35,14 +41,37 @@ export default function VirtualKeyboard({ nextChar, activeKeys = [] }: Props) {
   )
 }
 
-function Key({ def, isNext, isActive }: { def: KeyDef; isNext: boolean; isActive: boolean }) {
+/** Single printable character keys (letters / digits / symbols), not Tab/Enter/etc. */
+function isCharKey(def: KeyDef) {
+  return def.code.length === 1 && def.code !== ' '
+}
+
+function Key({
+  def,
+  isNext,
+  isActive,
+  glyphFont,
+}: {
+  def: KeyDef
+  isNext: boolean
+  isActive: boolean
+  glyphFont?: string
+}) {
   const width = def.width ?? 1
   const base = fingerColors[def.finger]
+
+  // In glyph mode, show the legacy-font glyph for the key's character.
+  const glyph = glyphFont && isCharKey(def)
+  const mainLabel = glyph ? def.code : def.label
+  const isLetter = /^[a-z]$/.test(def.code)
+  const shiftLabel = glyph ? def.shift ?? (isLetter ? def.code.toUpperCase() : undefined) : def.shift
+
   return (
     <div
       style={{ flex: `${width} 0 0`, minWidth: width > 1 ? undefined : 34 }}
       className={[
-        'relative flex h-10 items-center justify-center rounded-md text-xs font-semibold capitalize ring-1 transition',
+        'relative flex h-10 items-center justify-center rounded-md text-xs font-semibold ring-1 transition',
+        glyph ? '' : 'capitalize',
         isNext
           ? 'bg-brand-600 text-white ring-brand-700 shadow-lg shadow-brand-600/40 scale-105'
           : isActive
@@ -51,12 +80,15 @@ function Key({ def, isNext, isActive }: { def: KeyDef; isNext: boolean; isActive
         def.home && !isNext ? 'ring-2 ring-slate-500' : '',
       ].join(' ')}
     >
-      {def.shift && def.shift !== def.label && (
-        <span className="absolute left-1 top-0.5 text-[9px] font-normal opacity-70">
-          {def.shift}
+      {shiftLabel && shiftLabel !== mainLabel && (
+        <span
+          className="absolute left-1 top-0.5 text-[9px] font-normal opacity-70"
+          style={glyph ? { fontFamily: glyphFont } : undefined}
+        >
+          {shiftLabel}
         </span>
       )}
-      <span>{def.label}</span>
+      <span style={glyph ? { fontFamily: glyphFont, fontSize: 16 } : undefined}>{mainLabel}</span>
     </div>
   )
 }

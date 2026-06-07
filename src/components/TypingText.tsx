@@ -11,6 +11,8 @@ interface Props {
   showScrollbar: boolean
   autoScroll: boolean
   className?: string
+  /** Override the default monospace font (e.g. KrutiDev/DevLys for Hindi). */
+  fontFamily?: string
 }
 
 /** Find the [start,end) range of the word containing index i. */
@@ -31,6 +33,7 @@ export default function TypingText({
   showScrollbar,
   autoScroll,
   className = '',
+  fontFamily,
 }: Props) {
   const cursorRef = useRef<HTMLSpanElement | null>(null)
   const pos = typed.length
@@ -50,7 +53,7 @@ export default function TypingText({
         bold ? 'font-bold' : '',
         className,
       ].join(' ')}
-      style={{ fontSize, fontFamily: '"JetBrains Mono", monospace', whiteSpace: 'pre-wrap' }}
+      style={{ fontSize, fontFamily: fontFamily ?? '"JetBrains Mono", monospace', whiteSpace: 'pre-wrap' }}
     >
       {target.split('').map((ch, i) => {
         const typedCh = typed[i]

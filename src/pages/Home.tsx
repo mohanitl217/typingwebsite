@@ -55,14 +55,26 @@ export default function Home() {
         </CardGrid>
       </Section>
 
-      {/* Hindi (coming soon) */}
+      {/* Hindi KrutiDev & DevLys */}
       <Section
         title="Hindi Typing — KrutiDev & DevLys Font"
         subtitle="Devanagari script • legacy fonts"
       >
         <CardGrid>
-          <ComingSoonCard title="Learn Typing" />
-          <ComingSoonCard title="Take Test" />
+          <ModuleCard
+            to="/hindi/krutidev/learn/kd-home-1"
+            color="from-fuchsia-400 to-purple-600"
+            icon={<HiIcon />}
+            title="Learn Typing"
+            desc="Lesson-wise KrutiDev/DevLys key practice with a Devanagari virtual keyboard."
+          />
+          <ModuleCard
+            to="/hindi/krutidev/test"
+            color="from-rose-400 to-pink-600"
+            icon={<TestIcon />}
+            title="Take Tests"
+            desc="Timed Hindi typing tests in KrutiDev/DevLys with printout & exam modes."
+          />
         </CardGrid>
       </Section>
 
@@ -174,6 +186,13 @@ function AbcIcon() {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 16l3-8 3 8M5 13h4M14 8v8h2a3 3 0 0 0 0-6h-2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  )
+}
+function HiIcon() {
+  return (
+    <span className="text-lg font-extrabold leading-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+      अ
+    </span>
   )
 }
 function TestIcon() {

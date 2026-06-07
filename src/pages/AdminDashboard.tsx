@@ -67,6 +67,7 @@ function ExercisesTab() {
   const [list, setList] = useState<Exercise[]>([])
   const [title, setTitle] = useState('')
   const [text, setText] = useState('')
+  const [category, setCategory] = useState('english-test')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
@@ -82,9 +83,9 @@ function ExercisesTab() {
     setError('')
     try {
       if (editingId) {
-        await api.adminUpdateExercise(editingId, { title, text })
+        await api.adminUpdateExercise(editingId, { title, text, category })
       } else {
-        await api.adminCreateExercise({ title, text, category: 'english-test', type: 'paragraph' })
+        await api.adminCreateExercise({ title, text, category, type: 'paragraph' })
       }
       setTitle('')
       setText('')
@@ -121,6 +122,7 @@ function ExercisesTab() {
                   setEditingId(ex.id)
                   setTitle(ex.title)
                   setText(ex.text)
+                  setCategory(ex.category || 'english-test')
                 }}
               >
                 Edit
@@ -144,6 +146,10 @@ function ExercisesTab() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+        <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="english-test">English Test</option>
+          <option value="hindi-krutidev-test">Hindi Test (KrutiDev / DevLys)</option>
+        </select>
         <textarea
           className="input min-h-[160px]"
           placeholder="Paste the passage text…"

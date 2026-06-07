@@ -24,7 +24,32 @@ function toParagraphs(text: string, withTabs: boolean): string {
 
 type Mode = 'normal' | 'printout' | 'exam'
 
-export default function TakeTest() {
+export interface FontOption {
+  id: string
+  label: string
+  family: string
+}
+
+interface TakeTestProps {
+  /** exercise category to load (default English) */
+  category?: string
+  /** module name stored on results (defaults to category) */
+  moduleName?: string
+  /** optional legacy-font selector (e.g. KrutiDev / DevLys for Hindi) */
+  fontOptions?: FontOption[]
+  /** heading shown above the test */
+  heading?: string
+}
+
+export default function TakeTest({
+  category = 'english-test',
+  moduleName,
+  fontOptions,
+  heading,
+}: TakeTestProps) {
+  const mod = moduleName ?? category
+  const localKey = `tm_local_exercises_${category}`
+
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [exIndex, setExIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -35,8 +60,11 @@ export default function TakeTest() {
   // A checkbox in Settings shows/hides it (tick = show, untick = hide).
   const [showStatusBar, setShowStatusBar] = useState(false)
 
+  const [fontId, setFontId] = useState(fontOptions?.[0]?.id ?? '')
+  const fontFamily = fontOptions?.find((f) => f.id === fontId)?.family
+
   const [duration, setDuration] = useState(10)
-  const [fontSize, setFontSize] = useState(18)
+  const [fontSize, setFontSize] = useState(fontOptions ? 24 : 18)
   const [bold, setBold] = useState(false)
 
   const [backspaceMode, setBackspaceMode] = useState<BackspaceMode>('off')
@@ -59,17 +87,18 @@ export default function TakeTest() {
   // load exercises
   useEffect(() => {
     api
-      .listExercises('english-test')
+      .listExercises(category)
       .then((list) => {
-        const local = JSON.parse(localStorage.getItem('tm_local_exercises') || '[]') as Exercise[]
+        const local = JSON.parse(localStorage.getItem(localKey) || '[]') as Exercise[]
         setExercises([...list, ...local])
       })
       .catch(() => {
-        const local = JSON.parse(localStorage.getItem('tm_local_exercises') || '[]') as Exercise[]
+        const local = JSON.parse(localStorage.getItem(localKey) || '[]') as Exercise[]
         setExercises(local)
       })
       .finally(() => setLoading(false))
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category])
 
   // build target text from current exercise + transforms
   const baseText = exercises[exIndex]?.text || ''
@@ -117,7 +146,7 @@ export default function TakeTest() {
       api
         .saveResult({
           userId: user?.id ?? null,
-          module: 'english-test',
+          module: mod,
           exerciseId: exercises[exIndex]?.id ?? null,
           wpm: session.stats.wpm,
           accuracy: session.stats.accuracy,
@@ -199,13 +228,13 @@ export default function TakeTest() {
     const ex: Exercise = {
       id: 'local-' + Date.now().toString(36),
       title,
-      category: 'english-test',
+      category,
       type: 'paragraph',
       text: text.trim(),
     }
-    const local = JSON.parse(localStorage.getItem('tm_local_exercises') || '[]') as Exercise[]
+    const local = JSON.parse(localStorage.getItem(localKey) || '[]') as Exercise[]
     local.push(ex)
-    localStorage.setItem('tm_local_exercises', JSON.stringify(local))
+    localStorage.setItem(localKey, JSON.stringify(local))
     setExercises((prev) => [...prev, ex])
     setExIndex(exercises.length)
   }
@@ -252,6 +281,7 @@ export default function TakeTest() {
           bold={bold}
           showScrollbar={showScrollbar}
           autoScroll={autoScroll}
+          fontFamily={fontFamily}
           className={mode === 'exam' ? 'max-h-[40vh]' : 'max-h-72'}
         />
       )}
@@ -263,19 +293,37 @@ export default function TakeTest() {
 
       {/* controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold text-slate-600">Duration:</span>
-          <select
-            className="input w-auto"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          >
-            {DURATIONS.map((d) => (
-              <option key={d} value={d}>
-                {d} Minute{d > 1 ? 's' : ''}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          {fontOptions && (
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-600">Font:</span>
+              <select
+                className="input w-auto"
+                value={fontId}
+                onChange={(e) => setFontId(e.target.value)}
+              >
+                {fontOptions.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-600">Duration:</span>
+            <select
+              className="input w-auto"
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+            >
+              {DURATIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} Minute{d > 1 ? 's' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -342,7 +390,7 @@ export default function TakeTest() {
           mode === 'exam' ? 'flex-1 overflow-auto' : 'min-h-[200px]',
           showScrollbar ? '' : 'no-scrollbar',
         ].join(' ')}
-        style={{ fontSize, whiteSpace: 'pre-wrap' }}
+        style={{ fontSize, whiteSpace: 'pre-wrap', ...(fontFamily ? { fontFamily } : {}) }}
       >
         {session.typed.length === 0 && (
           <span className="text-slate-400">Click here and start typing…</span>
@@ -380,47 +428,50 @@ export default function TakeTest() {
           <div className="mx-auto flex h-full max-w-5xl flex-col">{content}</div>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
-          <div>
-            {loading ? (
-              <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
-            ) : exercises.length === 0 ? (
-              <div className="card p-8 text-center text-slate-500">
-                No exercises yet. Use “Add New Exercise” to create one.
-                <div className="mt-3">
-                  <button className="btn-primary" onClick={addExercise}>
-                    + Add New Exercise
-                  </button>
+        <div className="space-y-4">
+          {heading && <h1 className="text-xl font-extrabold text-slate-900">{heading}</h1>}
+          <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+            <div>
+              {loading ? (
+                <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
+              ) : exercises.length === 0 ? (
+                <div className="card p-8 text-center text-slate-500">
+                  No exercises yet. Use “Add New Exercise” to create one.
+                  <div className="mt-3">
+                    <button className="btn-primary" onClick={addExercise}>
+                      + Add New Exercise
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              content
-            )}
+              ) : (
+                content
+              )}
+            </div>
+            <Settings
+              backspaceMode={backspaceMode}
+              setBackspaceMode={setBackspaceMode}
+              highlight={highlight}
+              setHighlight={setHighlight}
+              showStatusBar={showStatusBar}
+              setShowStatusBar={setShowStatusBar}
+              showScrollbar={showScrollbar}
+              setShowScrollbar={setShowScrollbar}
+              autoScroll={autoScroll}
+              setAutoScroll={setAutoScroll}
+              applyWordLimit={applyWordLimit}
+              setApplyWordLimit={setApplyWordLimit}
+              wordLimit={wordLimit}
+              setWordLimit={setWordLimit}
+              wordProcessor={wordProcessor}
+              setWordProcessor={setWordProcessor}
+              allowParagraphs={allowParagraphs}
+              setAllowParagraphs={setAllowParagraphs}
+              allowTabs={allowTabs}
+              setAllowTabs={setAllowTabs}
+              bold={bold}
+              setBold={setBold}
+            />
           </div>
-          <Settings
-            backspaceMode={backspaceMode}
-            setBackspaceMode={setBackspaceMode}
-            highlight={highlight}
-            setHighlight={setHighlight}
-            showStatusBar={showStatusBar}
-            setShowStatusBar={setShowStatusBar}
-            showScrollbar={showScrollbar}
-            setShowScrollbar={setShowScrollbar}
-            autoScroll={autoScroll}
-            setAutoScroll={setAutoScroll}
-            applyWordLimit={applyWordLimit}
-            setApplyWordLimit={setApplyWordLimit}
-            wordLimit={wordLimit}
-            setWordLimit={setWordLimit}
-            wordProcessor={wordProcessor}
-            setWordProcessor={setWordProcessor}
-            allowParagraphs={allowParagraphs}
-            setAllowParagraphs={setAllowParagraphs}
-            allowTabs={allowTabs}
-            setAllowTabs={setAllowTabs}
-            bold={bold}
-            setBold={setBold}
-          />
         </div>
       )}
 

@@ -45,3 +45,44 @@ body {
     @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
   }
 }
+
+
+/* ---------------------------------------------------------------------------
+   Legacy Devanagari "glyph" fonts (KrutiDev / DevLys).
+   These map Latin codepoints to Devanagari glyphs, so typing ASCII on a
+   QWERTY keyboard renders as Hindi. We prefer a locally-installed copy
+   (common on exam machines / typists' PCs) and fall back to a hosted webfont.
+   Webfonts via OnlineWebFonts (CC BY 4.0). Content was sourced for compliance
+   with licensing restrictions.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'KrutiDev';
+  src:
+    local('Kruti Dev 010'),
+    local('KrutiDev 010'),
+    local('Kruti Dev 011'),
+    url('https://db.onlinewebfonts.com/t/153df7204d8e1121c57e6b7eb53216eb.woff2') format('woff2'),
+    url('https://db.onlinewebfonts.com/t/153df7204d8e1121c57e6b7eb53216eb.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DevLys';
+  src:
+    local('DevLys 010'),
+    local('Dev Lys 010'),
+    url('https://db.onlinewebfonts.com/t/55f4f4b8db5bd0e5ae410963adede8b1.woff2') format('woff2'),
+    url('https://db.onlinewebfonts.com/t/55f4f4b8db5bd0e5ae410963adede8b1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-krutidev {
+  font-family: 'KrutiDev', 'Kruti Dev 010', 'Kruti Dev 011', sans-serif;
+}
+.font-devlys {
+  font-family: 'DevLys', 'DevLys 010', sans-serif;
+}
