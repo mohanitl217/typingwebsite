@@ -129,6 +129,35 @@ export default function TakeTest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.finishedAt])
 
+  async function requestBrowserFullscreen() {
+    const el = document.documentElement as any
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+    } catch {
+      /* user denied or unsupported – overlay still works */
+    }
+  }
+
+  async function exitBrowserFullscreen() {
+    const d = document as any
+    try {
+      if (d.fullscreenElement || d.webkitFullscreenElement) {
+        if (d.exitFullscreen) await d.exitFullscreen()
+        else if (d.webkitExitFullscreen) await d.webkitExitFullscreen()
+        else if (d.msExitFullscreen) await d.msExitFullscreen()
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function exitExam() {
+    setMode('normal')
+    exitBrowserFullscreen()
+  }
+
   function enterPrintout() {
     setPopup('printout')
   }
@@ -137,10 +166,31 @@ export default function TakeTest() {
   }
   function confirmPopup() {
     if (popup === 'printout') setMode('printout')
-    if (popup === 'exam') setMode('exam')
+    if (popup === 'exam') {
+      setMode('exam')
+      // Trigger actual browser full screen (like pressing F11) on user gesture.
+      requestBrowserFullscreen()
+    }
     setPopup(null)
     setTimeout(() => surfaceRef.current?.focus(), 50)
   }
+
+  // If the user leaves browser full screen (e.g. presses Esc), drop exam mode too.
+  useEffect(() => {
+    function onFsChange() {
+      const d = document as any
+      const isFs = Boolean(d.fullscreenElement || d.webkitFullscreenElement)
+      if (!isFs) {
+        setMode((m) => (m === 'exam' ? 'normal' : m))
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+    }
+  }, [])
 
   function addExercise() {
     const text = window.prompt('Paste the passage text for the new exercise:')
@@ -182,7 +232,7 @@ export default function TakeTest() {
           + Add New Exercise
         </button>
         {mode === 'exam' ? (
-          <button className="btn-accent" onClick={() => setMode('normal')}>
+          <button className="btn-accent" onClick={exitExam}>
             Exit Exam Mode
           </button>
         ) : (
@@ -424,7 +474,7 @@ export default function TakeTest() {
           stats={session.stats}
           onClose={() => {
             setShowResult(false)
-            if (mode === 'exam') setMode('normal')
+            if (mode === 'exam') exitExam()
           }}
           onRetry={() => {
             setShowResult(false)
