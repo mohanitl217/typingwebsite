@@ -2,27 +2,51 @@ import express from 'express'
 import cors from 'cors'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { JSONFilePreset } from 'lowdb/node'
+import { Low } from 'lowdb'
+import { JSONFile } from 'lowdb/node'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
+import os from 'os'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const JWT_SECRET = process.env.JWT_SECRET || 'typemaster-dev-secret-change-me'
+// Passenger / Hostinger inject PORT. It may be a number or a socket path.
 const PORT = process.env.PORT || 4000
 
-// ---------- Database ----------
-const defaultData = {
-  users: [],
-  exercises: [],
-  results: [],
-  admins: [],
+// Don't let an unexpected error take the whole process down silently.
+process.on('uncaughtException', (err) => console.error('uncaughtException:', err))
+process.on('unhandledRejection', (err) => console.error('unhandledRejection:', err))
+
+const defaultData = { users: [], exercises: [], results: [], admins: [] }
+
+/** Pick a DB file location we can actually write to. */
+function resolveDbFile() {
+  const candidates = [
+    process.env.DB_FILE,
+    path.join(__dirname, 'db.json'),
+    path.join(os.tmpdir(), 'typemaster-db.json'),
+  ].filter(Boolean)
+  for (const file of candidates) {
+    try {
+      const dir = path.dirname(file)
+      fs.accessSync(dir, fs.constants.W_OK)
+      return file
+    } catch {
+      /* try next */
+    }
+  }
+  return path.join(os.tmpdir(), 'typemaster-db.json')
 }
 
-const db = await JSONFilePreset(path.join(__dirname, 'db.json'), defaultData)
+const db = new Low(new JSONFile(resolveDbFile()), defaultData)
 
-// Seed an admin + a few starter test exercises on first run.
-async function seed() {
+async function initDb() {
+  await db.read()
+  db.data ||= structuredClone(defaultData)
+  for (const key of Object.keys(defaultData)) {
+    if (!Array.isArray(db.data[key])) db.data[key] = []
+  }
   let changed = false
   if (db.data.admins.length === 0) {
     db.data.admins.push({
@@ -33,16 +57,32 @@ async function seed() {
     changed = true
   }
   if (db.data.exercises.length === 0) {
-    const seedFile = path.join(__dirname, 'seed-exercises.json')
-    if (fs.existsSync(seedFile)) {
-      const seeds = JSON.parse(fs.readFileSync(seedFile, 'utf-8'))
-      db.data.exercises.push(...seeds)
-      changed = true
+    try {
+      const seedFile = path.join(__dirname, 'seed-exercises.json')
+      if (fs.existsSync(seedFile)) {
+        db.data.exercises.push(...JSON.parse(fs.readFileSync(seedFile, 'utf-8')))
+        changed = true
+      }
+    } catch (e) {
+      console.error('seed load failed:', e)
     }
   }
-  if (changed) await db.write()
+  if (changed) {
+    try {
+      await db.write()
+    } catch (e) {
+      console.error('db write failed (continuing in-memory):', e)
+    }
+  }
 }
-await seed()
+
+async function save() {
+  try {
+    await db.write()
+  } catch (e) {
+    console.error('db write failed:', e)
+  }
+}
 
 // ---------- App ----------
 const app = express()
@@ -69,8 +109,11 @@ function authAdmin(req, res, next) {
   }
 }
 
+// ---------- Health ----------
+app.get('/api/health', (req, res) => res.json({ ok: true }))
+
 // ---------- Auth ----------
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body || {}
   const admin = db.data.admins.find((a) => a.username === username)
   if (!admin || !bcrypt.compareSync(password || '', admin.passwordHash)) {
@@ -110,7 +153,7 @@ app.post('/api/admin/exercises', authAdmin, async (req, res) => {
     createdAt: new Date().toISOString(),
   }
   db.data.exercises.push(ex)
-  await db.write()
+  await save()
   res.status(201).json(ex)
 })
 
@@ -122,7 +165,7 @@ app.put('/api/admin/exercises/:id', authAdmin, async (req, res) => {
   if (category !== undefined) ex.category = category
   if (text !== undefined) ex.text = text
   if (type !== undefined) ex.type = type
-  await db.write()
+  await save()
   res.json(ex)
 })
 
@@ -130,12 +173,11 @@ app.delete('/api/admin/exercises/:id', authAdmin, async (req, res) => {
   const idx = db.data.exercises.findIndex((e) => e.id === req.params.id)
   if (idx === -1) return res.status(404).json({ error: 'Not found' })
   const [removed] = db.data.exercises.splice(idx, 1)
-  await db.write()
+  await save()
   res.json(removed)
 })
 
 // ---------- Users ----------
-// Lightweight self-registration so results can be tracked per user.
 app.post('/api/users', async (req, res) => {
   const { name } = req.body || {}
   if (!name) return res.status(400).json({ error: 'name required' })
@@ -148,7 +190,7 @@ app.post('/api/users', async (req, res) => {
       createdAt: new Date().toISOString(),
     }
     db.data.users.push(user)
-    await db.write()
+    await save()
   }
   if (user.active === false) return res.status(403).json({ error: 'User is blocked' })
   res.json(user)
@@ -166,7 +208,7 @@ app.patch('/api/admin/users/:id', authAdmin, async (req, res) => {
   const user = db.data.users.find((u) => u.id === req.params.id)
   if (!user) return res.status(404).json({ error: 'Not found' })
   if (typeof req.body.active === 'boolean') user.active = req.body.active
-  await db.write()
+  await save()
   res.json(user)
 })
 
@@ -175,7 +217,7 @@ app.delete('/api/admin/users/:id', authAdmin, async (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Not found' })
   const [removed] = db.data.users.splice(idx, 1)
   db.data.results = db.data.results.filter((r) => r.userId !== removed.id)
-  await db.write()
+  await save()
   res.json(removed)
 })
 
@@ -194,7 +236,7 @@ app.post('/api/results', async (req, res) => {
     createdAt: new Date().toISOString(),
   }
   db.data.results.push(result)
-  await db.write()
+  await save()
   res.status(201).json(result)
 })
 
@@ -210,25 +252,29 @@ app.get('/api/admin/results', authAdmin, (req, res) => {
   res.json(enriched)
 })
 
-// ---------- Serve built client in production ----------
+// ---------- Serve built client ----------
 const distDir = path.join(__dirname, '..', 'dist')
 const indexHtml = path.join(distDir, 'index.html')
 app.use(express.static(distDir))
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'Not found' })
-  }
-  if (fs.existsSync(indexHtml)) {
-    return res.sendFile(indexHtml)
-  }
+  if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' })
+  if (fs.existsSync(indexHtml)) return res.sendFile(indexHtml)
   res
-    .status(503)
+    .status(200)
     .send(
-      '<h1>TypeMaster</h1><p>The frontend has not been built yet. Run <code>npm run build</code> (this creates the <code>dist</code> folder) and restart the app.</p>',
+      '<!doctype html><html><body style="font-family:sans-serif;padding:40px"><h1>TypeMaster</h1><p>The API is running, but the frontend build (<code>dist</code>) was not found. Run <code>npm run build</code> and restart.</p></body></html>',
     )
 })
 
-// Bind to 0.0.0.0 so hosting platforms can route external traffic.
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`TypeMaster running on port ${PORT}`)
-})
+// ---------- Start ----------
+initDb()
+  .catch((e) => console.error('initDb failed (continuing):', e))
+  .finally(() => {
+    // Passenger sets PORT to a numeric port; listening without a host keeps it
+    // compatible with both TCP ports and socket paths.
+    app.listen(PORT, () => {
+      console.log(`TypeMaster running on ${PORT}`)
+    })
+  })
+
+export default app
