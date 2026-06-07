@@ -31,6 +31,8 @@ export default function TakeTest() {
 
   const [mode, setMode] = useState<Mode>('normal')
   const [popup, setPopup] = useState<null | 'printout' | 'exam'>(null)
+  // Settings panel is hidden by default; user clicks "Show Settings" to reveal it.
+  const [showSettings, setShowSettings] = useState(false)
 
   const [duration, setDuration] = useState(10)
   const [fontSize, setFontSize] = useState(18)
@@ -178,15 +180,25 @@ export default function TakeTest() {
         <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={addExercise}>
           + Add New Exercise
         </button>
-        {mode === 'exam' ? (
-          <button className="btn-accent" onClick={() => setMode('normal')}>
-            Exit Exam Mode
-          </button>
-        ) : (
-          <button className="btn-ghost" onClick={enterExam}>
-            Go Exam Mode
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {mode !== 'exam' && (
+            <button
+              className={showSettings ? 'btn-accent' : 'btn-ghost'}
+              onClick={() => setShowSettings((s) => !s)}
+            >
+              {showSettings ? 'Hide Settings' : 'Show Settings'}
+            </button>
+          )}
+          {mode === 'exam' ? (
+            <button className="btn-accent" onClick={() => setMode('normal')}>
+              Exit Exam Mode
+            </button>
+          ) : (
+            <button className="btn-ghost" onClick={enterExam}>
+              Go Exam Mode
+            </button>
+          )}
+        </div>
       </div>
 
       {/* reference passage (hidden in printout) */}
@@ -325,7 +337,7 @@ export default function TakeTest() {
           <div className="mx-auto flex h-full max-w-5xl flex-col">{content}</div>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+        <div className={showSettings ? 'grid gap-4 lg:grid-cols-[1fr_260px]' : 'grid gap-4'}>
           <div>
             {loading ? (
               <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
@@ -342,28 +354,31 @@ export default function TakeTest() {
               content
             )}
           </div>
-          <Settings
-            backspaceMode={backspaceMode}
-            setBackspaceMode={setBackspaceMode}
-            highlight={highlight}
-            setHighlight={setHighlight}
-            showScrollbar={showScrollbar}
-            setShowScrollbar={setShowScrollbar}
-            autoScroll={autoScroll}
-            setAutoScroll={setAutoScroll}
-            applyWordLimit={applyWordLimit}
-            setApplyWordLimit={setApplyWordLimit}
-            wordLimit={wordLimit}
-            setWordLimit={setWordLimit}
-            wordProcessor={wordProcessor}
-            setWordProcessor={setWordProcessor}
-            allowParagraphs={allowParagraphs}
-            setAllowParagraphs={setAllowParagraphs}
-            allowTabs={allowTabs}
-            setAllowTabs={setAllowTabs}
-            bold={bold}
-            setBold={setBold}
-          />
+          {showSettings && (
+            <Settings
+              backspaceMode={backspaceMode}
+              setBackspaceMode={setBackspaceMode}
+              highlight={highlight}
+              setHighlight={setHighlight}
+              showScrollbar={showScrollbar}
+              setShowScrollbar={setShowScrollbar}
+              autoScroll={autoScroll}
+              setAutoScroll={setAutoScroll}
+              applyWordLimit={applyWordLimit}
+              setApplyWordLimit={setApplyWordLimit}
+              wordLimit={wordLimit}
+              setWordLimit={setWordLimit}
+              wordProcessor={wordProcessor}
+              setWordProcessor={setWordProcessor}
+              allowParagraphs={allowParagraphs}
+              setAllowParagraphs={setAllowParagraphs}
+              allowTabs={allowTabs}
+              setAllowTabs={setAllowTabs}
+              bold={bold}
+              setBold={setBold}
+              onClose={() => setShowSettings(false)}
+            />
+          )}
         </div>
       )}
 
@@ -453,10 +468,22 @@ function Settings(props: any) {
     setAllowTabs,
     bold,
     setBold,
+    onClose,
   } = props
   return (
     <aside className="card h-fit space-y-4 p-4">
-      <div className="text-sm font-extrabold text-slate-700">Settings</div>
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-extrabold text-slate-700">Settings</div>
+        {onClose && (
+          <button
+            className="rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100"
+            onClick={onClose}
+            title="Hide settings"
+          >
+            ✕ Hide
+          </button>
+        )}
+      </div>
 
       <Group title="Backspace Options">
         {(
