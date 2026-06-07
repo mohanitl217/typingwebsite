@@ -22,6 +22,8 @@ export default function LearnTyping() {
   const [bold, setBold] = useState(false)
   const [showKeyboard, setShowKeyboard] = useState(true)
   const [showResult, setShowResult] = useState(false)
+  // Live status bar is hidden by default; a checkbox in Settings shows/hides it.
+  const [showStatusBar, setShowStatusBar] = useState(false)
 
   const [settings, setSettings] = useState({
     backspaceMode: 'full' as BackspaceMode,
@@ -239,7 +241,7 @@ export default function LearnTyping() {
                 <span className="animate-pulse text-brand-400">▎</span>
               </div>
 
-              <StatBar stats={session.stats} />
+              {showStatusBar && <StatBar stats={session.stats} />}
 
               {showKeyboard && <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} />}
             </>
@@ -275,6 +277,14 @@ export default function LearnTyping() {
             </div>
 
             <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showStatusBar}
+                  onChange={(e) => setShowStatusBar(e.target.checked)}
+                />
+                Show Status Bar
+              </label>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
