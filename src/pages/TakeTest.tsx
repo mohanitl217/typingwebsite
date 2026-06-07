@@ -31,8 +31,9 @@ export default function TakeTest() {
 
   const [mode, setMode] = useState<Mode>('normal')
   const [popup, setPopup] = useState<null | 'printout' | 'exam'>(null)
-  // Settings panel is hidden by default; user clicks "Show Settings" to reveal it.
-  const [showSettings, setShowSettings] = useState(false)
+  // The live status bar (speed/accuracy/errors/time) is hidden by default.
+  // A checkbox in Settings shows/hides it (tick = show, untick = hide).
+  const [showStatusBar, setShowStatusBar] = useState(false)
 
   const [duration, setDuration] = useState(10)
   const [fontSize, setFontSize] = useState(18)
@@ -180,25 +181,15 @@ export default function TakeTest() {
         <button className="text-sm font-semibold text-brand-600 hover:underline" onClick={addExercise}>
           + Add New Exercise
         </button>
-        <div className="flex items-center gap-2">
-          {mode !== 'exam' && (
-            <button
-              className={showSettings ? 'btn-accent' : 'btn-ghost'}
-              onClick={() => setShowSettings((s) => !s)}
-            >
-              {showSettings ? 'Hide Settings' : 'Show Settings'}
-            </button>
-          )}
-          {mode === 'exam' ? (
-            <button className="btn-accent" onClick={() => setMode('normal')}>
-              Exit Exam Mode
-            </button>
-          ) : (
-            <button className="btn-ghost" onClick={enterExam}>
-              Go Exam Mode
-            </button>
-          )}
-        </div>
+        {mode === 'exam' ? (
+          <button className="btn-accent" onClick={() => setMode('normal')}>
+            Exit Exam Mode
+          </button>
+        ) : (
+          <button className="btn-ghost" onClick={enterExam}>
+            Go Exam Mode
+          </button>
+        )}
       </div>
 
       {/* reference passage (hidden in printout) */}
@@ -278,15 +269,17 @@ export default function TakeTest() {
         Select test duration and start typing. Timer will start automatically.
       </p>
 
-      {/* timer + live stats */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="rounded-lg bg-slate-900 px-4 py-2 font-mono text-lg font-bold text-white">
-          ⏱ {mmss}
+      {/* timer + live stats (hidden by default, toggled from Settings) */}
+      {showStatusBar && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="rounded-lg bg-slate-900 px-4 py-2 font-mono text-lg font-bold text-white">
+            ⏱ {mmss}
+          </div>
+          <div className="flex-1">
+            <StatBar stats={session.stats} timeLabel={mmss} />
+          </div>
         </div>
-        <div className="flex-1">
-          <StatBar stats={session.stats} timeLabel={mmss} />
-        </div>
-      </div>
+      )}
 
       {/* typing surface */}
       <div
@@ -337,7 +330,7 @@ export default function TakeTest() {
           <div className="mx-auto flex h-full max-w-5xl flex-col">{content}</div>
         </div>
       ) : (
-        <div className={showSettings ? 'grid gap-4 lg:grid-cols-[1fr_260px]' : 'grid gap-4'}>
+        <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
           <div>
             {loading ? (
               <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
@@ -354,31 +347,30 @@ export default function TakeTest() {
               content
             )}
           </div>
-          {showSettings && (
-            <Settings
-              backspaceMode={backspaceMode}
-              setBackspaceMode={setBackspaceMode}
-              highlight={highlight}
-              setHighlight={setHighlight}
-              showScrollbar={showScrollbar}
-              setShowScrollbar={setShowScrollbar}
-              autoScroll={autoScroll}
-              setAutoScroll={setAutoScroll}
-              applyWordLimit={applyWordLimit}
-              setApplyWordLimit={setApplyWordLimit}
-              wordLimit={wordLimit}
-              setWordLimit={setWordLimit}
-              wordProcessor={wordProcessor}
-              setWordProcessor={setWordProcessor}
-              allowParagraphs={allowParagraphs}
-              setAllowParagraphs={setAllowParagraphs}
-              allowTabs={allowTabs}
-              setAllowTabs={setAllowTabs}
-              bold={bold}
-              setBold={setBold}
-              onClose={() => setShowSettings(false)}
-            />
-          )}
+          <Settings
+            backspaceMode={backspaceMode}
+            setBackspaceMode={setBackspaceMode}
+            highlight={highlight}
+            setHighlight={setHighlight}
+            showStatusBar={showStatusBar}
+            setShowStatusBar={setShowStatusBar}
+            showScrollbar={showScrollbar}
+            setShowScrollbar={setShowScrollbar}
+            autoScroll={autoScroll}
+            setAutoScroll={setAutoScroll}
+            applyWordLimit={applyWordLimit}
+            setApplyWordLimit={setApplyWordLimit}
+            wordLimit={wordLimit}
+            setWordLimit={setWordLimit}
+            wordProcessor={wordProcessor}
+            setWordProcessor={setWordProcessor}
+            allowParagraphs={allowParagraphs}
+            setAllowParagraphs={setAllowParagraphs}
+            allowTabs={allowTabs}
+            setAllowTabs={setAllowTabs}
+            bold={bold}
+            setBold={setBold}
+          />
         </div>
       )}
 
@@ -468,22 +460,20 @@ function Settings(props: any) {
     setAllowTabs,
     bold,
     setBold,
-    onClose,
+    showStatusBar,
+    setShowStatusBar,
   } = props
   return (
     <aside className="card h-fit space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-extrabold text-slate-700">Settings</div>
-        {onClose && (
-          <button
-            className="rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100"
-            onClick={onClose}
-            title="Hide settings"
-          >
-            ✕ Hide
-          </button>
-        )}
-      </div>
+      <div className="text-sm font-extrabold text-slate-700">Settings</div>
+
+      <Group title="Status Bar">
+        <Check
+          checked={showStatusBar}
+          onChange={setShowStatusBar}
+          label="Show Status Bar (Speed / Accuracy / Errors / Time)"
+        />
+      </Group>
 
       <Group title="Backspace Options">
         {(
