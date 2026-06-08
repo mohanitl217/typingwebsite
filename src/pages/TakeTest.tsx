@@ -420,16 +420,18 @@ export default function TakeTest({
             className={
               showSettings
                 ? 'grid gap-4 lg:grid-cols-[200px_1fr_260px]'
-                : 'grid gap-4 lg:grid-cols-[200px_1fr]'
+                : 'grid gap-4 lg:grid-cols-1'
             }
           >
-            <LeftPanel
-              fontOptions={fontOptions}
-              fontId={fontId}
-              setFontId={setFontId}
-              bold={bold}
-              setBold={setBold}
-            />
+            {showSettings && (
+              <LeftPanel
+                fontOptions={fontOptions}
+                fontId={fontId}
+                setFontId={setFontId}
+                bold={bold}
+                setBold={setBold}
+              />
+            )}
             <div>
               {loading ? (
                 <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
