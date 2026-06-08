@@ -56,6 +56,8 @@ export default function TakeTest({
 
   const [mode, setMode] = useState<Mode>('normal')
   const [popup, setPopup] = useState<null | 'printout' | 'exam'>(null)
+  // Right-hand Settings panel can be hidden via the "Hide Settings" toggle.
+  const [showSettings, setShowSettings] = useState(true)
   // The live status bar (speed/accuracy/errors/time) is hidden by default.
   // A checkbox in Settings shows/hides it (tick = show, untick = hide).
   const [showStatusBar, setShowStatusBar] = useState(false)
@@ -294,22 +296,6 @@ export default function TakeTest({
       {/* controls */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          {fontOptions && (
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-600">Font:</span>
-              <select
-                className="input w-auto"
-                value={fontId}
-                onChange={(e) => setFontId(e.target.value)}
-              >
-                {fontOptions.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-600">Duration:</span>
             <select
@@ -430,7 +416,20 @@ export default function TakeTest({
       ) : (
         <div className="space-y-4">
           {heading && <h1 className="text-xl font-extrabold text-slate-900">{heading}</h1>}
-          <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+          <div
+            className={
+              showSettings
+                ? 'grid gap-4 lg:grid-cols-[200px_1fr_260px]'
+                : 'grid gap-4 lg:grid-cols-[200px_1fr]'
+            }
+          >
+            <LeftPanel
+              fontOptions={fontOptions}
+              fontId={fontId}
+              setFontId={setFontId}
+              bold={bold}
+              setBold={setBold}
+            />
             <div>
               {loading ? (
                 <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
@@ -447,30 +446,38 @@ export default function TakeTest({
                 content
               )}
             </div>
-            <Settings
-              backspaceMode={backspaceMode}
-              setBackspaceMode={setBackspaceMode}
-              highlight={highlight}
-              setHighlight={setHighlight}
-              showStatusBar={showStatusBar}
-              setShowStatusBar={setShowStatusBar}
-              showScrollbar={showScrollbar}
-              setShowScrollbar={setShowScrollbar}
-              autoScroll={autoScroll}
-              setAutoScroll={setAutoScroll}
-              applyWordLimit={applyWordLimit}
-              setApplyWordLimit={setApplyWordLimit}
-              wordLimit={wordLimit}
-              setWordLimit={setWordLimit}
-              wordProcessor={wordProcessor}
-              setWordProcessor={setWordProcessor}
-              allowParagraphs={allowParagraphs}
-              setAllowParagraphs={setAllowParagraphs}
-              allowTabs={allowTabs}
-              setAllowTabs={setAllowTabs}
-              bold={bold}
-              setBold={setBold}
-            />
+            {showSettings ? (
+              <Settings
+                onHide={() => setShowSettings(false)}
+                backspaceMode={backspaceMode}
+                setBackspaceMode={setBackspaceMode}
+                highlight={highlight}
+                setHighlight={setHighlight}
+                showStatusBar={showStatusBar}
+                setShowStatusBar={setShowStatusBar}
+                showScrollbar={showScrollbar}
+                setShowScrollbar={setShowScrollbar}
+                autoScroll={autoScroll}
+                setAutoScroll={setAutoScroll}
+                applyWordLimit={applyWordLimit}
+                setApplyWordLimit={setApplyWordLimit}
+                wordLimit={wordLimit}
+                setWordLimit={setWordLimit}
+                wordProcessor={wordProcessor}
+                setWordProcessor={setWordProcessor}
+                allowParagraphs={allowParagraphs}
+                setAllowParagraphs={setAllowParagraphs}
+                allowTabs={allowTabs}
+                setAllowTabs={setAllowTabs}
+              />
+            ) : (
+              <button
+                className="btn-ghost fixed bottom-4 right-4 z-30 shadow-lg ring-1 ring-slate-300"
+                onClick={() => setShowSettings(true)}
+              >
+                ⚙ Show Settings
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -555,8 +562,44 @@ export default function TakeTest({
   )
 }
 
+function LeftPanel({
+  fontOptions,
+  fontId,
+  setFontId,
+  bold,
+  setBold,
+}: {
+  fontOptions?: FontOption[]
+  fontId: string
+  setFontId: (v: string) => void
+  bold: boolean
+  setBold: (v: boolean) => void
+}) {
+  return (
+    <aside className="card h-fit space-y-4 p-4">
+      {fontOptions && fontOptions.length > 0 && (
+        <Group title="Select Font">
+          {fontOptions.map((f) => (
+            <Radio
+              key={f.id}
+              name="font"
+              checked={fontId === f.id}
+              onChange={() => setFontId(f.id)}
+              label={f.label}
+            />
+          ))}
+        </Group>
+      )}
+      <Group title="Text">
+        <Check checked={bold} onChange={setBold} label="Bold" />
+      </Group>
+    </aside>
+  )
+}
+
 function Settings(props: any) {
   const {
+    onHide,
     backspaceMode,
     setBackspaceMode,
     highlight,
@@ -575,14 +618,20 @@ function Settings(props: any) {
     setAllowParagraphs,
     allowTabs,
     setAllowTabs,
-    bold,
-    setBold,
     showStatusBar,
     setShowStatusBar,
   } = props
   return (
     <aside className="card h-fit space-y-4 p-4">
-      <div className="text-sm font-extrabold text-slate-700">Settings</div>
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-extrabold text-slate-700">Settings</div>
+        <button
+          className="rounded-md px-2 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-300 hover:bg-slate-100"
+          onClick={onHide}
+        >
+          Hide Settings ✕
+        </button>
+      </div>
 
       <Group title="Status Bar">
         <Check
@@ -666,10 +715,6 @@ function Settings(props: any) {
           disabled={!wordProcessor}
           label="Allow Tabs"
         />
-      </Group>
-
-      <Group title="Text">
-        <Check checked={bold} onChange={setBold} label="Bold" />
       </Group>
     </aside>
   )
