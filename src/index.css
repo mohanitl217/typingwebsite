@@ -86,13 +86,3 @@ body {
 .font-devlys {
   font-family: 'DevLys', 'DevLys 010', sans-serif;
 }
-
-
-/* Animated finger "press" used by the Hands hint above the keyboard. */
-@keyframes finger-press {
-  0%, 100% { transform: translateY(0); }
-  55% { transform: translateY(11px); }
-}
-.finger-active {
-  animation: finger-press 0.75s ease-in-out infinite;
-}

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { lessons, getLesson } from '../data/lessons'
 import VirtualKeyboard from '../components/VirtualKeyboard'
-import Hands from '../components/Hands'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
@@ -244,12 +243,7 @@ export default function LearnTyping() {
 
               {showStatusBar && <StatBar stats={session.stats} />}
 
-              {showKeyboard && (
-                <>
-                  <Hands nextChar={nextChar} />
-                  <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} />
-                </>
-              )}
+              {showKeyboard && <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} />}
             </>
           )}
         </div>
