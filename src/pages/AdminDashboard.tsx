@@ -1,9 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getToken, clearToken } from '../api'
 import type { Exercise, TestResult, User } from '../types'
 
 type Tab = 'exercises' | 'users' | 'results'
+
+/** All manageable typing sections. Admins can add/edit/delete exercises in each. */
+const SECTIONS: { category: string; label: string }[] = [
+  { category: 'english-test', label: 'English Typing Test' },
+  { category: 'hindi-krutidev-test', label: 'Hindi Typing — KrutiDev & DevLys' },
+  { category: 'hindi-remington-gail-test', label: 'Hindi Unicode — Remington (GAIL)' },
+  { category: 'hindi-inscript-test', label: 'Hindi Unicode — INSCRIPT' },
+  { category: 'hindi-remington-cbi-test', label: 'Hindi Unicode — Remington (CBI)' },
+  { category: 'numbers-test', label: 'Number Typing' },
+]
+
+const EXERCISE_TYPES: Exercise['type'][] = ['paragraph', 'words', 'numbers']
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -65,36 +77,21 @@ export default function AdminDashboard() {
 
 function ExercisesTab() {
   const [list, setList] = useState<Exercise[]>([])
-  const [title, setTitle] = useState('')
-  const [text, setText] = useState('')
-  const [category, setCategory] = useState('english-test')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  // Editor state: open when set. `ex` present => editing, otherwise adding to `category`.
+  const [editor, setEditor] = useState<null | { ex?: Exercise; category: string }>(null)
 
   async function load() {
-    setList(await api.adminListExercises())
+    setLoading(true)
+    try {
+      setList(await api.adminListExercises())
+    } finally {
+      setLoading(false)
+    }
   }
   useEffect(() => {
     load()
   }, [])
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    try {
-      if (editingId) {
-        await api.adminUpdateExercise(editingId, { title, text, category })
-      } else {
-        await api.adminCreateExercise({ title, text, category, type: 'paragraph' })
-      }
-      setTitle('')
-      setText('')
-      setEditingId(null)
-      await load()
-    } catch (err: any) {
-      setError(err.message)
-    }
-  }
 
   async function remove(id: string) {
     if (!confirm('Delete this exercise?')) return
@@ -102,34 +99,108 @@ function ExercisesTab() {
     await load()
   }
 
+  // Group exercises by category.
+  const byCat = useMemo(() => {
+    const m: Record<string, Exercise[]> = {}
+    for (const ex of list) (m[ex.category] ||= []).push(ex)
+    return m
+  }, [list])
+
+  const knownCats = new Set(SECTIONS.map((s) => s.category))
+  const otherCats = Object.keys(byCat).filter((c) => !knownCats.has(c))
+
+  if (loading) {
+    return <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
+  }
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-      <div className="card divide-y divide-slate-100">
-        {list.length === 0 && <div className="p-6 text-sm text-slate-500">No exercises yet.</div>}
-        {list.map((ex) => (
+    <div className="space-y-4">
+      {SECTIONS.map((sec) => (
+        <SectionCard
+          key={sec.category}
+          label={sec.label}
+          items={byCat[sec.category] || []}
+          onAdd={() => setEditor({ category: sec.category })}
+          onEdit={(ex) => setEditor({ ex, category: ex.category })}
+          onDelete={remove}
+        />
+      ))}
+
+      {otherCats.map((c) => (
+        <SectionCard
+          key={c}
+          label={c}
+          items={byCat[c]}
+          onAdd={() => setEditor({ category: c })}
+          onEdit={(ex) => setEditor({ ex, category: ex.category })}
+          onDelete={remove}
+        />
+      ))}
+
+      {editor && (
+        <ExerciseEditorModal
+          initial={editor}
+          onClose={() => setEditor(null)}
+          onSaved={async () => {
+            setEditor(null)
+            await load()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function sectionLabel(category: string) {
+  return SECTIONS.find((s) => s.category === category)?.label ?? category
+}
+
+function SectionCard({
+  label,
+  items,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  label: string
+  items: Exercise[]
+  onAdd: () => void
+  onEdit: (ex: Exercise) => void
+  onDelete: (id: string) => void
+}) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="min-w-0">
+          <div className="truncate font-bold text-slate-800">{label}</div>
+          <div className="text-xs text-slate-400">
+            {items.length} exercise{items.length === 1 ? '' : 's'}
+          </div>
+        </div>
+        <button className="btn-primary flex-shrink-0 px-3 py-1.5 text-sm" onClick={onAdd}>
+          + Add Exercise
+        </button>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {items.length === 0 && (
+          <div className="p-4 text-sm text-slate-400">No exercises in this section yet.</div>
+        )}
+        {items.map((ex) => (
           <div key={ex.id} className="flex items-start justify-between gap-3 p-4">
             <div className="min-w-0">
               <div className="font-semibold text-slate-800">{ex.title}</div>
               <p className="mt-1 line-clamp-2 text-sm text-slate-500">{ex.text}</p>
               <span className="mt-1 inline-block rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                {ex.category}
+                {ex.type}
               </span>
             </div>
             <div className="flex flex-shrink-0 gap-2">
-              <button
-                className="btn-ghost px-2 py-1 text-xs"
-                onClick={() => {
-                  setEditingId(ex.id)
-                  setTitle(ex.title)
-                  setText(ex.text)
-                  setCategory(ex.category || 'english-test')
-                }}
-              >
+              <button className="btn-ghost px-2 py-1 text-xs" onClick={() => onEdit(ex)}>
                 Edit
               </button>
               <button
                 className="rounded-lg bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-100"
-                onClick={() => remove(ex.id)}
+                onClick={() => onDelete(ex.id)}
               >
                 Delete
               </button>
@@ -137,41 +208,127 @@ function ExercisesTab() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
 
-      <form onSubmit={save} className="card h-fit space-y-3 p-4">
-        <div className="font-bold text-slate-700">{editingId ? 'Edit exercise' : 'Add exercise'}</div>
-        <input
-          className="input"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <select className="input" value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="english-test">English Test</option>
-          <option value="hindi-krutidev-test">Hindi Test (KrutiDev / DevLys)</option>
-        </select>
-        <textarea
-          className="input min-h-[160px]"
-          placeholder="Paste the passage text…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        {error && <p className="text-sm text-rose-600">{error}</p>}
-        <div className="flex gap-2">
-          <button className="btn-primary flex-1">{editingId ? 'Update' : 'Create'}</button>
-          {editingId && (
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => {
-                setEditingId(null)
-                setTitle('')
-                setText('')
-              }}
+function ExerciseEditorModal({
+  initial,
+  onClose,
+  onSaved,
+}: {
+  initial: { ex?: Exercise; category: string }
+  onClose: () => void
+  onSaved: () => Promise<void> | void
+}) {
+  const editing = Boolean(initial.ex)
+  const [title, setTitle] = useState(initial.ex?.title ?? '')
+  const [text, setText] = useState(initial.ex?.text ?? '')
+  const [category, setCategory] = useState(initial.ex?.category ?? initial.category)
+  const [type, setType] = useState<Exercise['type']>(initial.ex?.type ?? 'paragraph')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim() || !text.trim()) {
+      setError('Title and passage text are both required.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      if (editing) {
+        await api.adminUpdateExercise(initial.ex!.id, { title, text, category, type })
+      } else {
+        await api.adminCreateExercise({ title, text, category, type })
+      }
+      await onSaved()
+    } catch (err: any) {
+      setError(err.message || 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <form
+        onSubmit={save}
+        className="w-full max-w-lg animate-fade-in space-y-3 rounded-xl bg-white p-5 shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-slate-800">
+            {editing ? 'Edit Exercise' : 'Add Exercise'}
+          </h3>
+          <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+            {sectionLabel(category)}
+          </span>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-500">Title</label>
+          <input
+            className="input mt-1"
+            placeholder="Exercise title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500">Section</label>
+            <select
+              className="input mt-1"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
             >
-              Cancel
-            </button>
-          )}
+              {SECTIONS.map((s) => (
+                <option key={s.category} value={s.category}>
+                  {s.label}
+                </option>
+              ))}
+              {!SECTIONS.some((s) => s.category === category) && (
+                <option value={category}>{category}</option>
+              )}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500">Type</label>
+            <select
+              className="input mt-1"
+              value={type}
+              onChange={(e) => setType(e.target.value as Exercise['type'])}
+            >
+              {EXERCISE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-slate-500">Passage text</label>
+          <textarea
+            className="input mt-1 min-h-[160px]"
+            placeholder="Paste the passage text…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </div>
+
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </button>
+          <button className="btn-primary" disabled={saving}>
+            {saving ? 'Saving…' : editing ? 'Update' : 'Create'}
+          </button>
         </div>
       </form>
     </div>
