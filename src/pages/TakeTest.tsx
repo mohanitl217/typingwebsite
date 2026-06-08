@@ -5,8 +5,12 @@ import TypingText, { type HighlightMode } from '../components/TypingText'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
+import { krutiDevToUnicode, isDevanagari } from '../lib/krutidev'
 
 const DURATIONS = [1, 2, 5, 10, 15, 20]
+
+/** Unicode Devanagari font used to display Hindi (after KrutiDev->Unicode conversion). */
+const HINDI_UNICODE_FONT = "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
 
 /** Split plain text into indented paragraphs for word-processor mode. */
 function toParagraphs(text: string, withTabs: boolean): string {
@@ -49,6 +53,13 @@ export default function TakeTest({
 }: TakeTestProps) {
   const mod = moduleName ?? category
   const localKey = `tm_local_exercises_${category}`
+
+  // Hindi (KrutiDev / DevLys) sections type via a Remington keyboard whose
+  // keystrokes we convert to Unicode Devanagari so the typed text appears in
+  // Hindi script. Presence of fontOptions marks these sections.
+  const hindiMode = Boolean(fontOptions)
+  // Raw KrutiDev keystrokes (ASCII) the user has pressed, before conversion.
+  const rawRef = useRef('')
 
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [exIndex, setExIndex] = useState(0)
@@ -112,13 +123,50 @@ export default function TakeTest({
     if (wordProcessor && allowParagraphs) {
       t = toParagraphs(t, allowTabs)
     }
+    // In Hindi sections, the comparison/display target is Unicode Devanagari.
+    // Convert legacy KrutiDev-ASCII passages; leave real Unicode passages as-is.
+    if (hindiMode) {
+      t = isDevanagari(t) ? t : krutiDevToUnicode(t)
+    }
     return t
-  }, [baseText, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs])
+  }, [baseText, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs, hindiMode])
+
+  // Hindi text is rendered with a Unicode Devanagari font (we converted away
+  // from the legacy glyph font); other sections use any provided font.
+  const effectiveFontFamily = hindiMode ? HINDI_UNICODE_FONT : fontFamily
 
   const settings = { backspaceMode, moveOnError: true, playSounds: false }
   const session = useTypingSession(target, settings)
 
+  // Hindi keyboard handler: capture raw KrutiDev keystrokes, convert the whole
+  // buffer to Unicode, and feed the result into the session.
+  function onHindiKey(e: React.KeyboardEvent) {
+    if (session.finishedAt) return
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      if (backspaceMode === 'off') return
+      rawRef.current =
+        backspaceMode === 'word'
+          ? rawRef.current.replace(/\s*\S*\s*$/, '')
+          : rawRef.current.slice(0, -1)
+      session.replaceTyped(krutiDevToUnicode(rawRef.current))
+      return
+    }
+    if (e.key === 'Enter' && target.includes('\n')) {
+      e.preventDefault()
+      rawRef.current += '\n'
+      session.replaceTyped(krutiDevToUnicode(rawRef.current))
+      return
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      rawRef.current += e.key
+      session.replaceTyped(krutiDevToUnicode(rawRef.current))
+    }
+  }
+
   useEffect(() => {
+    rawRef.current = ''
     session.reset()
     setRemaining(duration * 60)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,7 +331,7 @@ export default function TakeTest({
           bold={bold}
           showScrollbar={showScrollbar}
           autoScroll={autoScroll}
-          fontFamily={fontFamily}
+          fontFamily={effectiveFontFamily}
           className={mode === 'exam' ? 'max-h-[40vh]' : 'max-h-72'}
         />
       )}
@@ -369,14 +417,14 @@ export default function TakeTest({
       <div
         ref={surfaceRef}
         tabIndex={0}
-        onKeyDown={session.onKeyDown}
+        onKeyDown={hindiMode ? onHindiKey : session.onKeyDown}
         onClick={() => surfaceRef.current?.focus()}
         className={[
           'cursor-text rounded-xl bg-white p-4 font-mono text-slate-800 outline-none ring-1 ring-slate-300 focus:ring-2 focus:ring-brand-500',
           mode === 'exam' ? 'flex-1 overflow-auto' : 'min-h-[200px]',
           showScrollbar ? '' : 'no-scrollbar',
         ].join(' ')}
-        style={{ fontSize, whiteSpace: 'pre-wrap', ...(fontFamily ? { fontFamily } : {}) }}
+        style={{ fontSize, whiteSpace: 'pre-wrap', ...(effectiveFontFamily ? { fontFamily: effectiveFontFamily } : {}) }}
       >
         {session.typed.length === 0 && (
           <span className="text-slate-400">Click here and start typing…</span>
@@ -393,7 +441,7 @@ export default function TakeTest({
       </div>
 
       <div className="flex justify-end gap-2">
-        <button className="btn-ghost" onClick={() => session.reset()}>
+        <button className="btn-ghost" onClick={() => { rawRef.current = ''; session.reset() }}>
           Reset
         </button>
         <button
@@ -535,13 +583,14 @@ export default function TakeTest({
           typed={session.typed}
           stats={session.stats}
           durationSec={duration * 60}
-          fontFamily={fontFamily}
+          fontFamily={effectiveFontFamily}
           onClose={() => {
             setShowResult(false)
             if (mode === 'exam') exitExam()
           }}
           onRepeat={() => {
             setShowResult(false)
+            rawRef.current = ''
             session.reset()
             setRemaining(duration * 60)
             surfaceRef.current?.focus()

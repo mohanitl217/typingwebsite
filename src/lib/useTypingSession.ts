@@ -92,6 +92,28 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     [finishedAt, target, settings.moveOnError, settings.playSounds, startedAt],
   )
 
+  /**
+   * Replace the whole typed string at once. Used by the Hindi (KrutiDev)
+   * input method, which converts raw keystrokes to Unicode externally and
+   * feeds the resulting Devanagari string here. Errors/stats are recomputed
+   * against the target.
+   */
+  const replaceTyped = useCallback(
+    (next: string) => {
+      if (finishedAt) return
+      keystrokesRef.current += 1
+      setKeystrokes(keystrokesRef.current)
+      let errs = 0
+      for (let i = 0; i < next.length; i++) if (next[i] !== target[i]) errs++
+      errorRef.current = errs
+      setErrorCount(errs)
+      if (next.length > 0 && !startedAt) setStartedAt(Date.now())
+      if (next.length >= target.length && target.length > 0) setFinishedAt(Date.now())
+      setTyped(next)
+    },
+    [finishedAt, target, startedAt],
+  )
+
   const handleBackspace = useCallback(() => {
     if (finishedAt) return
     if (settings.backspaceMode === 'off') return
@@ -172,6 +194,7 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     onKeyDown,
     handleChar,
     handleBackspace,
+    replaceTyped,
     reset,
     finish,
   }
