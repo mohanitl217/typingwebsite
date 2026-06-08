@@ -80,9 +80,9 @@ export default function Home() {
 
       <Section title="Hindi Typing — Mangal Unicode Font" subtitle="Unicode Devanagari script">
         <div className="grid gap-4 md:grid-cols-3">
-          <LayoutBox name="Remington GAIL Layout" />
-          <LayoutBox name="INSCRIPT Layout" />
-          <LayoutBox name="Remington CBI Layout" />
+          <LayoutBox name="Remington GAIL Layout" slug="remington-gail" />
+          <LayoutBox name="INSCRIPT Layout" slug="inscript" />
+          <LayoutBox name="Remington CBI Layout" slug="remington-cbi" />
         </div>
       </Section>
     </div>
@@ -164,19 +164,25 @@ function ComingSoonCard({ title }: { title: string }) {
   )
 }
 
-function LayoutBox({ name }: { name: string }) {
+function LayoutBox({ name, slug }: { name: string; slug: string }) {
   return (
     <div className="card p-5">
       <div className="text-sm font-bold text-slate-700">{name}</div>
       <div className="mt-3 flex gap-2">
-        <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-400">
+        <Link
+          to={`/hindi/mangal/${slug}/learn/mg-vowels`}
+          className="rounded-md bg-fuchsia-100 px-3 py-1.5 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-200"
+        >
           Learn Typing
-        </span>
-        <span className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-400">
+        </Link>
+        <Link
+          to={`/hindi/mangal/${slug}/test`}
+          className="rounded-md bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200"
+        >
           Take Test
-        </span>
+        </Link>
       </div>
-      <p className="mt-3 text-xs text-slate-400">Coming soon.</p>
+      <p className="mt-3 text-xs text-slate-400">Real Unicode Devanagari • Mangal font.</p>
     </div>
   )
 }

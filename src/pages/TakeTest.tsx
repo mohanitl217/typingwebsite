@@ -6,6 +6,8 @@ import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 import { hasDevanagari, unicodeToKrutidev } from '../lib/krutidev'
+import { hindiLayouts, MANGAL_FONT, type HindiLayout } from '../lib/hindiLayouts'
+import { useHindiLayoutInput } from '../lib/useHindiLayoutInput'
 
 const DURATIONS = [1, 2, 5, 10, 15, 20]
 
@@ -40,6 +42,12 @@ interface TakeTestProps {
   fontOptions?: FontOption[]
   /** heading shown above the test */
   heading?: string
+  /**
+   * When set, this is a Unicode (Mangal) Hindi test using the given keyboard
+   * layout: keystrokes are mapped to real Devanagari via the layout IME and the
+   * passage is rendered in a Unicode Devanagari font.
+   */
+  unicodeLayout?: HindiLayout
 }
 
 export default function TakeTest({
@@ -47,6 +55,7 @@ export default function TakeTest({
   moduleName,
   fontOptions,
   heading,
+  unicodeLayout,
 }: TakeTestProps) {
   const mod = moduleName ?? category
   const localKey = `tm_local_exercises_${category}`
@@ -129,19 +138,25 @@ export default function TakeTest({
   }, [baseText, isLegacyFontTest, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs])
 
   // Font resolution:
+  // - Unicode (Mangal) layout test: always render in a Unicode Devanagari font.
   // - Legacy (KrutiDev / DevLys) test: the target is now KrutiDev ASCII, so the
   //   reference AND the typing surface must both use the selected legacy font.
   // - Otherwise (e.g. English test): if the text contains real Unicode Hindi,
   //   render it with a proper Unicode Devanagari font.
   const isUnicodeHindi = /[\u0900-\u097F]/.test(target)
-  const effectiveFontFamily = isLegacyFontTest
-    ? fontFamily
-    : isUnicodeHindi
-      ? "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
-      : fontFamily
+  const effectiveFontFamily = unicodeLayout
+    ? MANGAL_FONT
+    : isLegacyFontTest
+      ? fontFamily
+      : isUnicodeHindi
+        ? "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
+        : fontFamily
 
   const settings = { backspaceMode, moveOnError: true, playSounds: false }
   const session = useTypingSession(target, settings)
+
+  // Unicode layout IME handler (used only when `unicodeLayout` is set).
+  const layoutKeyDown = useHindiLayoutInput(unicodeLayout ?? hindiLayouts[0], session, target)
 
   useEffect(() => {
     session.reset()
@@ -394,7 +409,7 @@ export default function TakeTest({
       <div
         ref={surfaceRef}
         tabIndex={0}
-        onKeyDown={session.onKeyDown}
+        onKeyDown={unicodeLayout ? layoutKeyDown : session.onKeyDown}
         onClick={() => surfaceRef.current?.focus()}
         className={[
           'cursor-text rounded-xl bg-white p-4 font-mono text-slate-800 outline-none ring-1 ring-slate-300 focus:ring-2 focus:ring-brand-500',
