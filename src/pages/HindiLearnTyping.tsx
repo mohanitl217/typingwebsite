@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hindiLessons, getHindiLesson } from '../data/hindiLessons'
 import VirtualKeyboard from '../components/VirtualKeyboard'
+import { Hand, fingersForChar } from '../components/Hands'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
@@ -261,7 +262,13 @@ export default function HindiLearnTyping() {
               {showStatusBar && <StatBar stats={session.stats} />}
 
               {showKeyboard && (
-                <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} glyphFont={fontFamily} />
+                <div className="flex items-center justify-center gap-1">
+                  <Hand side="left" active={fingersForChar(nextChar)} className="hidden h-36 w-24 shrink-0 sm:block lg:w-28" />
+                  <div className="min-w-0 flex-1">
+                    <VirtualKeyboard nextChar={nextChar} activeKeys={lesson.keys} glyphFont={fontFamily} />
+                  </div>
+                  <Hand side="right" active={fingersForChar(nextChar)} className="hidden h-36 w-24 shrink-0 sm:block lg:w-28" />
+                </div>
               )}
             </>
           )}
