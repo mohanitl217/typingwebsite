@@ -318,32 +318,34 @@ export default function TakeTest({
         </div>
       )}
 
-      {/* controls — kept on a single row */}
-      <div className="flex flex-nowrap items-center justify-between gap-2">
-        <div className="flex shrink-0 items-center gap-2 text-sm">
-          <span className="font-semibold text-slate-600">Duration:</span>
-          <select
-            className="input w-auto"
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          >
-            {DURATIONS.map((d) => (
-              <option key={d} value={d}>
-                {d} Minute{d > 1 ? 's' : ''}
-              </option>
-            ))}
-          </select>
+      {/* controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-600">Duration:</span>
+            <select
+              className="input w-auto"
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+            >
+              {DURATIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d} Minute{d > 1 ? 's' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
           <button
-            className="btn-ghost shrink-0 px-2"
+            className="btn-ghost px-2"
             disabled={exIndex === 0}
             onClick={() => setExIndex((i) => Math.max(0, i - 1))}
           >
             «
           </button>
           <select
-            className="input w-auto min-w-0 max-w-full truncate"
+            className="input w-auto"
             value={exIndex}
             onChange={(e) => setExIndex(Number(e.target.value))}
           >
@@ -354,14 +356,14 @@ export default function TakeTest({
             ))}
           </select>
           <button
-            className="btn-ghost shrink-0 px-2"
+            className="btn-ghost px-2"
             disabled={exIndex >= exercises.length - 1}
             onClick={() => setExIndex((i) => Math.min(exercises.length - 1, i + 1))}
           >
             »
           </button>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex items-center gap-1">
           <button className="btn-ghost px-2" onClick={() => setFontSize(Math.max(12, fontSize - 2))}>
             A-
           </button>
