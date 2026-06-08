@@ -5,6 +5,7 @@ import TypingText, { type HighlightMode } from '../components/TypingText'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
+import { hasDevanagari, unicodeToKrutidev } from '../lib/krutidev'
 
 const DURATIONS = [1, 2, 5, 10, 15, 20]
 
@@ -102,10 +103,22 @@ export default function TakeTest({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category])
 
+  // Is this a legacy-font (KrutiDev / DevLys) test? Such fonts are ASCII-glyph
+  // fonts: the user presses QWERTY keys (ASCII) and the font turns them into
+  // Devanagari glyphs. So the *target text itself* must be in KrutiDev ASCII —
+  // otherwise the reference shows Hindi (via a Unicode font) while the typed
+  // ASCII keystrokes render as Latin. If an exercise is authored in real Unicode
+  // Hindi we transparently re-encode it to KrutiDev ASCII here.
+  const isLegacyFontTest = Boolean(fontOptions && fontOptions.length > 0)
+
   // build target text from current exercise + transforms
   const baseText = exercises[exIndex]?.text || ''
   const target = useMemo(() => {
-    let t = baseText.replace(/\s+/g, ' ').trim()
+    let t = baseText
+    if (isLegacyFontTest && hasDevanagari(t)) {
+      t = unicodeToKrutidev(t)
+    }
+    t = t.replace(/\s+/g, ' ').trim()
     if (applyWordLimit) {
       t = t.split(' ').slice(0, Math.max(10, wordLimit)).join(' ')
     }
@@ -113,15 +126,19 @@ export default function TakeTest({
       t = toParagraphs(t, allowTabs)
     }
     return t
-  }, [baseText, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs])
+  }, [baseText, isLegacyFontTest, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs])
 
-  // KrutiDev / DevLys are legacy ASCII-glyph fonts: feeding them real Unicode
-  // Devanagari produces garbled output. If the exercise text contains Unicode
-  // Hindi (U+0900–U+097F), render it with a proper Unicode Devanagari font.
+  // Font resolution:
+  // - Legacy (KrutiDev / DevLys) test: the target is now KrutiDev ASCII, so the
+  //   reference AND the typing surface must both use the selected legacy font.
+  // - Otherwise (e.g. English test): if the text contains real Unicode Hindi,
+  //   render it with a proper Unicode Devanagari font.
   const isUnicodeHindi = /[\u0900-\u097F]/.test(target)
-  const effectiveFontFamily = isUnicodeHindi
-    ? "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
-    : fontFamily
+  const effectiveFontFamily = isLegacyFontTest
+    ? fontFamily
+    : isUnicodeHindi
+      ? "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
+      : fontFamily
 
   const settings = { backspaceMode, moveOnError: true, playSounds: false }
   const session = useTypingSession(target, settings)
