@@ -115,6 +115,14 @@ export default function TakeTest({
     return t
   }, [baseText, applyWordLimit, wordLimit, wordProcessor, allowParagraphs, allowTabs])
 
+  // KrutiDev / DevLys are legacy ASCII-glyph fonts: feeding them real Unicode
+  // Devanagari produces garbled output. If the exercise text contains Unicode
+  // Hindi (U+0900–U+097F), render it with a proper Unicode Devanagari font.
+  const isUnicodeHindi = /[\u0900-\u097F]/.test(target)
+  const effectiveFontFamily = isUnicodeHindi
+    ? "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', 'Annapurna SIL', sans-serif"
+    : fontFamily
+
   const settings = { backspaceMode, moveOnError: true, playSounds: false }
   const session = useTypingSession(target, settings)
 
@@ -283,7 +291,7 @@ export default function TakeTest({
           bold={bold}
           showScrollbar={showScrollbar}
           autoScroll={autoScroll}
-          fontFamily={fontFamily}
+          fontFamily={effectiveFontFamily}
           className={mode === 'exam' ? 'max-h-[40vh]' : 'max-h-72'}
         />
       )}
@@ -376,7 +384,7 @@ export default function TakeTest({
           mode === 'exam' ? 'flex-1 overflow-auto' : 'min-h-[200px]',
           showScrollbar ? '' : 'no-scrollbar',
         ].join(' ')}
-        style={{ fontSize, whiteSpace: 'pre-wrap', ...(fontFamily ? { fontFamily } : {}) }}
+        style={{ fontSize, whiteSpace: 'pre-wrap', ...(effectiveFontFamily ? { fontFamily: effectiveFontFamily } : {}) }}
       >
         {session.typed.length === 0 && (
           <span className="text-slate-400">Click here and start typing…</span>
@@ -537,7 +545,7 @@ export default function TakeTest({
           typed={session.typed}
           stats={session.stats}
           durationSec={duration * 60}
-          fontFamily={fontFamily}
+          fontFamily={effectiveFontFamily}
           onClose={() => {
             setShowResult(false)
             if (mode === 'exam') exitExam()
