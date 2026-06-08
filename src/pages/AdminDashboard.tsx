@@ -2,8 +2,24 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, getToken, clearToken } from '../api'
 import type { Exercise, TestResult, User } from '../types'
+import { lessons } from '../data/lessons'
+import { hindiLessons } from '../data/hindiLessons'
+import type { Lesson } from '../data/lessons'
 
-type Tab = 'exercises' | 'users' | 'results'
+type Tab = 'exercises' | 'lessons' | 'users' | 'results'
+
+const TAB_LABELS: Record<Tab, string> = {
+  exercises: 'Test Exercises',
+  lessons: 'Learn Typing',
+  users: 'Users',
+  results: 'Results',
+}
+
+/** Built-in Learn-Typing lesson sets (static, code-defined). */
+const LESSON_GROUPS: { label: string; lessons: Lesson[] }[] = [
+  { label: 'Learn Typing — English', lessons },
+  { label: 'Learn Typing — Hindi (KrutiDev / DevLys)', lessons: hindiLessons },
+]
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -41,22 +57,23 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <div className="flex gap-2">
-        {(['exercises', 'users', 'results'] as Tab[]).map((t) => (
+      <div className="flex flex-wrap gap-2">
+        {(['exercises', 'lessons', 'users', 'results'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={[
-              'rounded-lg px-4 py-2 text-sm font-semibold capitalize transition',
+              'rounded-lg px-4 py-2 text-sm font-semibold transition',
               tab === t ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200',
             ].join(' ')}
           >
-            {t}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {tab === 'exercises' && <ExercisesTab />}
+      {tab === 'lessons' && <LessonsTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'results' && <ResultsTab />}
     </div>
@@ -174,6 +191,82 @@ function ExercisesTab() {
           )}
         </div>
       </form>
+    </div>
+  )
+}
+
+function LessonsTab() {
+  return (
+    <div className="space-y-4">
+      <p className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700 ring-1 ring-amber-100">
+        These are the built-in <b>Learn Typing</b> lessons (drills, words &amp; paragraphs) shown for
+        reference. They are defined in the app and are read-only here.
+      </p>
+      {LESSON_GROUPS.map((group) => (
+        <div key={group.label} className="card overflow-hidden">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+            <div className="min-w-0">
+              <div className="truncate font-bold text-slate-800">{group.label}</div>
+              <div className="text-xs text-slate-400">
+                {group.lessons.length} lesson{group.lessons.length === 1 ? '' : 's'}
+              </div>
+            </div>
+            <span className="flex-shrink-0 rounded bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+              Built-in
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {group.lessons.map((lesson) => (
+              <LessonRow key={lesson.id} lesson={lesson} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function LessonRow({ lesson }: { lesson: Lesson }) {
+  const [open, setOpen] = useState(false)
+  const counts = `${lesson.drills.length} drills · ${lesson.words.length} words · ${lesson.paragraphs.length} paragraphs`
+  return (
+    <div className="p-4">
+      <button
+        className="flex w-full items-center justify-between gap-3 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="min-w-0">
+          <div className="font-semibold text-slate-800">{lesson.title}</div>
+          <div className="mt-0.5 text-xs text-slate-400">{counts}</div>
+        </div>
+        <span className="flex-shrink-0 text-slate-400">{open ? '▾' : '▸'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <LessonBlock title="Keys" items={lesson.keys} mono />
+          <LessonBlock title="Instructions" items={lesson.instructions} />
+          <LessonBlock title="Drills" items={lesson.drills} mono />
+          <LessonBlock title="Words" items={lesson.words} mono />
+          <LessonBlock title="Paragraphs" items={lesson.paragraphs} mono />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LessonBlock({ title, items, mono }: { title: string; items: string[]; mono?: boolean }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div>
+      <div className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</div>
+      <ul className={`mt-1 space-y-1 text-sm text-slate-600 ${mono ? 'font-mono' : ''}`}>
+        {items.map((it, i) => (
+          <li key={i} className="rounded bg-slate-50 px-2 py-1">
+            {it}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
