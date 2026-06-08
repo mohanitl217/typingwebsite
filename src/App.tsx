@@ -1,18 +1,37 @@
 import { Routes, Route } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import LearnTyping from './pages/LearnTyping'
 import TakeTest from './pages/TakeTest'
 import NumberTyping from './pages/NumberTyping'
 import HindiLearnTyping from './pages/HindiLearnTyping'
+import HindiUnicodeLearnTyping from './pages/HindiUnicodeLearnTyping'
 import SignIn from './pages/SignIn'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
+import { getHindiLayout, hindiLayouts } from './lib/hindiLayouts'
 
 const HINDI_FONTS = [
   { id: 'krutidev', label: 'KrutiDev', family: '"KrutiDev", "Kruti Dev 010", sans-serif' },
   { id: 'devlys', label: 'DevLys', family: '"DevLys", "DevLys 010", sans-serif' },
 ]
+
+/** Route wrapper: Unicode (Mangal) Hindi typing test for the layout in the URL. */
+function MangalTestRoute() {
+  const { layout: slug } = useParams()
+  const layout = getHindiLayout(slug) || hindiLayouts[0]
+  return (
+    <Layout>
+      <TakeTest
+        category="hindi-mangal-test"
+        moduleName={`hindi-mangal-${layout.id}-test`}
+        unicodeLayout={layout}
+        heading={`Hindi Typing Test — ${layout.label} (Mangal Unicode)`}
+      />
+    </Layout>
+  )
+}
 
 export default function App() {
   return (
@@ -40,6 +59,13 @@ export default function App() {
           </Layout>
         }
       />
+
+      {/* Hindi Typing — Mangal Unicode (Remington GAIL / InScript / Remington CBI) */}
+      <Route
+        path="/hindi/mangal/:layout/learn/:lessonId"
+        element={<Layout><HindiUnicodeLearnTyping /></Layout>}
+      />
+      <Route path="/hindi/mangal/:layout/test" element={<MangalTestRoute />} />
 
       <Route path="/login" element={<Layout><SignIn /></Layout>} />
       <Route path="/admin" element={<Layout><AdminLogin /></Layout>} />

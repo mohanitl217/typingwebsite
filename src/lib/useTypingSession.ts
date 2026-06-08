@@ -92,6 +92,14 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     [finishedAt, target, settings.moveOnError, settings.playSounds, startedAt],
   )
 
+  // Remove the last character WITHOUT counting it as a backspace or changing
+  // stats. Used by the Unicode layout IME to revise the buffer when a keystroke
+  // combines with the previous output (e.g. अ + ा → आ).
+  const popChar = useCallback(() => {
+    if (finishedAt) return
+    setTyped((prev) => (prev.length ? prev.slice(0, -1) : prev))
+  }, [finishedAt])
+
   const handleBackspace = useCallback(() => {
     if (finishedAt) return
     if (settings.backspaceMode === 'off') return
@@ -174,5 +182,6 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     handleBackspace,
     reset,
     finish,
+    popChar,
   }
 }
