@@ -36,4 +36,6 @@ export interface TypingStats {
   correctChars: number
   typedChars: number
   elapsedSec: number
+  keystrokes?: number
+  backspaces?: number
 }

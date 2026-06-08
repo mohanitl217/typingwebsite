@@ -3,7 +3,7 @@ import { api, getStoredUser } from '../api'
 import type { Exercise } from '../types'
 import TypingText, { type HighlightMode } from '../components/TypingText'
 import StatBar from '../components/StatBar'
-import ResultModal from '../components/ResultModal'
+import CertificateResult from '../components/CertificateResult'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 
 const DURATIONS = [1, 2, 5, 10, 15, 20]
@@ -520,19 +520,35 @@ export default function TakeTest({
       )}
 
       {showResult && (
-        <ResultModal
+        <CertificateResult
           title="Typing Test Result"
+          userName={getStoredUser()?.name || 'Guest'}
+          exerciseTitle={exercises[exIndex]?.title || '-'}
+          target={target}
+          typed={session.typed}
           stats={session.stats}
+          durationSec={duration * 60}
+          fontFamily={fontFamily}
           onClose={() => {
             setShowResult(false)
             if (mode === 'exam') exitExam()
           }}
-          onRetry={() => {
+          onRepeat={() => {
             setShowResult(false)
             session.reset()
             setRemaining(duration * 60)
             surfaceRef.current?.focus()
           }}
+          onNext={
+            exIndex < exercises.length - 1
+              ? () => {
+                  setShowResult(false)
+                  setExIndex((i) => i + 1)
+                  setRemaining(duration * 60)
+                  setTimeout(() => surfaceRef.current?.focus(), 50)
+                }
+              : undefined
+          }
         />
       )}
     </>

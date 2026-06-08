@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { lessons, getLesson } from '../data/lessons'
 import VirtualKeyboard from '../components/VirtualKeyboard'
 import StatBar from '../components/StatBar'
-import ResultModal from '../components/ResultModal'
+import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
@@ -324,15 +324,28 @@ export default function LearnTyping() {
       </div>
 
       {showResult && (
-        <ResultModal
-          title={`${STAGES[stage]} — Report`}
+        <CertificateResult
+          title={`Learn Typing — ${STAGES[stage]}`}
+          userName={getStoredUser()?.name || 'Guest'}
+          exerciseTitle={`${lesson.title} — ${STAGES[stage]} (Exercise ${exIndex + 1})`}
+          target={target}
+          typed={session.typed}
           stats={session.stats}
           onClose={() => setShowResult(false)}
-          onRetry={() => {
+          onRepeat={() => {
             setShowResult(false)
             session.reset()
             surfaceRef.current?.focus()
           }}
+          onNext={
+            exIndex < exercises.length - 1
+              ? () => {
+                  setShowResult(false)
+                  setExIndex((i) => i + 1)
+                  setTimeout(() => surfaceRef.current?.focus(), 50)
+                }
+              : undefined
+          }
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import VirtualKeyboard from '../components/VirtualKeyboard'
 import StatBar from '../components/StatBar'
-import ResultModal from '../components/ResultModal'
+import CertificateResult from '../components/CertificateResult'
 import { useTypingSession } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
 
@@ -151,14 +151,23 @@ export default function NumberTyping() {
       {showKeyboard && <VirtualKeyboard nextChar={nextChar} activeKeys={['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']} />}
 
       {showResult && (
-        <ResultModal
-          title="Number Drill Report"
+        <CertificateResult
+          title={`Number Typing — ${level}`}
+          userName={getStoredUser()?.name || 'Guest'}
+          exerciseTitle={`Number drill (${level})`}
+          target={target}
+          typed={session.typed}
           stats={session.stats}
           onClose={() => setShowResult(false)}
-          onRetry={() => {
+          onRepeat={() => {
             setShowResult(false)
             setSeed(Date.now() % 100000)
             surfaceRef.current?.focus()
+          }}
+          onNext={() => {
+            setShowResult(false)
+            setSeed(Date.now() % 100000)
+            setTimeout(() => surfaceRef.current?.focus(), 50)
           }}
         />
       )}

@@ -41,6 +41,10 @@ export function useTypingSession(target: string, settings: TypingSettings) {
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
   const errorRef = useRef(0)
   const [errorCount, setErrorCount] = useState(0)
+  const keystrokesRef = useRef(0)
+  const [keystrokes, setKeystrokes] = useState(0)
+  const backspaceRef = useRef(0)
+  const [backspaces, setBackspaces] = useState(0)
 
   const reset = useCallback(() => {
     setTyped('')
@@ -48,6 +52,10 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     setFinishedAt(null)
     errorRef.current = 0
     setErrorCount(0)
+    keystrokesRef.current = 0
+    setKeystrokes(0)
+    backspaceRef.current = 0
+    setBackspaces(0)
   }, [])
 
   const finish = useCallback(() => {
@@ -57,6 +65,9 @@ export function useTypingSession(target: string, settings: TypingSettings) {
   const handleChar = useCallback(
     (ch: string) => {
       if (finishedAt) return
+      // Every printable key press counts as a keystroke (key depression).
+      keystrokesRef.current += 1
+      setKeystrokes(keystrokesRef.current)
       setTyped((prev) => {
         if (prev.length >= target.length) return prev
         const expected = target[prev.length]
@@ -86,6 +97,8 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     if (settings.backspaceMode === 'off') return
     setTyped((prev) => {
       if (prev.length === 0) return prev
+      backspaceRef.current += 1
+      setBackspaces(backspaceRef.current)
       if (settings.backspaceMode === 'word') {
         // delete back to the start of the current word
         let i = prev.length
@@ -145,8 +158,10 @@ export function useTypingSession(target: string, settings: TypingSettings) {
       correctChars,
       typedChars: typed.length,
       elapsedSec: Math.round(elapsedSec),
+      keystrokes,
+      backspaces,
     }
-  }, [typed, target, startedAt, finishedAt, errorCount])
+  }, [typed, target, startedAt, finishedAt, errorCount, keystrokes, backspaces])
 
   return {
     typed,
