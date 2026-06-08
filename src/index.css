@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Unicode Devanagari font for real Hindi (Unicode) exercises. Loaded so that
+   passages containing actual Devanagari characters render correctly instead of
+   being garbled by the legacy KrutiDev/DevLys glyph fonts. */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap');
+
 :root {
   font-family: 'Inter', system-ui, sans-serif;
 }
