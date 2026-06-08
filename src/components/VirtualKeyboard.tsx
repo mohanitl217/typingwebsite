@@ -15,7 +15,15 @@ interface Props {
 export default function VirtualKeyboard({ nextChar, activeKeys = [], glyphFont }: Props) {
   const target = nextChar ? lookupChar(nextChar) : null
   const highlightCode = target?.code
-  const needsShift = target?.shift
+  // When a shift is required, only the Shift key on the opposite hand of the
+  // key being typed should be highlighted (proper touch-typing technique).
+  // Left-hand keys use the Right Shift, right-hand keys use the Left Shift.
+  const shiftCode =
+    target?.shift && target.finger !== 'thumb'
+      ? target.finger.startsWith('l-')
+        ? 'ShiftRight'
+        : 'ShiftLeft'
+      : undefined
 
   return (
     <div className="select-none rounded-xl bg-slate-100 p-3 ring-1 ring-slate-200">
@@ -29,7 +37,7 @@ export default function VirtualKeyboard({ nextChar, activeKeys = [], glyphFont }
                 glyphFont={glyphFont}
                 isNext={
                   highlightCode === key.code ||
-                  Boolean(needsShift && (key.code === 'ShiftLeft' || key.code === 'ShiftRight'))
+                  (shiftCode !== undefined && key.code === shiftCode)
                 }
                 isActive={activeKeys.includes(key.code) || activeKeys.includes(key.label)}
               />
