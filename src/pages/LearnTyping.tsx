@@ -176,7 +176,8 @@ export default function LearnTyping() {
               Image Style (single line)
             </label>
           </div>
-          <FingerGuide lessonKeys={lesson.keys} />
+          {/* Finger placement guidance is only relevant while reading instructions */}
+          {stage === 0 && <FingerGuide lessonKeys={lesson.keys} />}
         </aside>
 
         {/* Center */}
