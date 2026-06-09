@@ -21,6 +21,7 @@ export default function LearnTyping() {
   const [exIndex, setExIndex] = useState(0)
   const [fontSize, setFontSize] = useState(18)
   const [bold, setBold] = useState(false)
+  const [imageStyle, setImageStyle] = useState(false)
   const [showKeyboard, setShowKeyboard] = useState(true)
   const [showResult, setShowResult] = useState(false)
   // Live status bar is hidden by default; a checkbox in Settings shows/hides it.
@@ -160,10 +161,18 @@ export default function LearnTyping() {
         {/* Left: font + finger guide */}
         <aside className="space-y-4">
           <div className="card p-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Select Font</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Display</div>
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
               Bold
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
             </label>
           </div>
           <FingerGuide lessonKeys={lesson.keys} />
@@ -184,6 +193,7 @@ export default function LearnTyping() {
                 bold={bold}
                 showScrollbar
                 autoScroll={false}
+                display={imageStyle ? 'line' : 'block'}
                 className="min-h-[120px]"
               />
 

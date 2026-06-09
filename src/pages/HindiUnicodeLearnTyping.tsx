@@ -23,6 +23,7 @@ export default function HindiUnicodeLearnTyping() {
   const [exIndex, setExIndex] = useState(0)
   const [fontSize, setFontSize] = useState(28)
   const [bold, setBold] = useState(false)
+  const [imageStyle, setImageStyle] = useState(false)
   const [showKeyboard, setShowKeyboard] = useState(true)
   const [showStatusBar, setShowStatusBar] = useState(false)
   const [showResult, setShowResult] = useState(false)
@@ -184,6 +185,7 @@ export default function HindiUnicodeLearnTyping() {
                 showScrollbar
                 autoScroll={false}
                 fontFamily={MANGAL_FONT}
+                display={imageStyle ? 'line' : 'block'}
                 className="min-h-[110px]"
               />
 
@@ -265,6 +267,14 @@ export default function HindiUnicodeLearnTyping() {
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
               Bold
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
             </label>
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
