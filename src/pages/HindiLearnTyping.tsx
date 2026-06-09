@@ -28,6 +28,7 @@ export default function HindiLearnTyping() {
   const [bold, setBold] = useState(false)
   const [fontId, setFontId] = useState<(typeof FONTS)[number]['id']>('krutidev')
   const [showKeyboard, setShowKeyboard] = useState(true)
+  const [imageStyle, setImageStyle] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [showStatusBar, setShowStatusBar] = useState(false)
 
@@ -181,6 +182,14 @@ export default function HindiLearnTyping() {
               <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
               Bold
             </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
+            </label>
           </div>
           <FingerGuide />
         </aside>
@@ -200,6 +209,7 @@ export default function HindiLearnTyping() {
                 showScrollbar
                 autoScroll={false}
                 fontFamily={fontFamily}
+                display={imageStyle ? 'line' : 'block'}
                 className="min-h-[120px]"
               />
 
