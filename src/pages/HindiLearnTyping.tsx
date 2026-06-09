@@ -191,7 +191,8 @@ export default function HindiLearnTyping() {
               Image Style (single line)
             </label>
           </div>
-          <FingerGuide />
+          {/* Finger placement guidance is only relevant while reading instructions */}
+          {stage === 0 && <FingerGuide />}
         </aside>
 
         {/* Center */}
