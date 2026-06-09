@@ -7,6 +7,7 @@ import UnicodeKeyboard from '../components/UnicodeKeyboard'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
+import LineTyping from '../components/LineTyping'
 import { useTypingSession } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
 
@@ -176,18 +177,28 @@ export default function HindiUnicodeLearnTyping() {
             <Instructions lesson={lesson} onStart={() => setStage(1)} />
           ) : (
             <>
-              <TypingText
-                target={target}
-                typed={session.typed}
-                highlight="word-error"
-                fontSize={fontSize}
-                bold={bold}
-                showScrollbar
-                autoScroll={false}
-                fontFamily={MANGAL_FONT}
-                display={imageStyle ? 'line' : 'block'}
-                className="min-h-[110px]"
-              />
+              {imageStyle ? (
+                <LineTyping
+                  target={target}
+                  typed={session.typed}
+                  bold={bold}
+                  fontFamily={MANGAL_FONT}
+                  onKeyDown={onKeyDown}
+                  inputRef={surfaceRef}
+                />
+              ) : (
+                <TypingText
+                  target={target}
+                  typed={session.typed}
+                  highlight="word-error"
+                  fontSize={fontSize}
+                  bold={bold}
+                  showScrollbar
+                  autoScroll={false}
+                  fontFamily={MANGAL_FONT}
+                  className="min-h-[110px]"
+                />
+              )}
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -229,29 +240,32 @@ export default function HindiUnicodeLearnTyping() {
               </div>
 
               {/* typing surface (real Unicode Devanagari) */}
-              <div
-                ref={surfaceRef}
-                tabIndex={0}
-                onKeyDown={onKeyDown}
-                className="min-h-[110px] cursor-text rounded-xl bg-slate-900 p-4 text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
-                style={{ fontSize, whiteSpace: 'pre-wrap', fontFamily: MANGAL_FONT }}
-                onClick={() => surfaceRef.current?.focus()}
-              >
-                {session.typed.length === 0 && (
-                  <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Click here and start typing…
-                  </span>
-                )}
-                {[...session.typed].map((ch, i) => (
-                  <span
-                    key={i}
-                    className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
-                  >
-                    {ch === '\n' ? '\u21B5\n' : ch}
-                  </span>
-                ))}
-                <span className="animate-pulse text-brand-400">▎</span>
-              </div>
+              {/* typing surface (hidden in image style — the strip is the input) */}
+              {!imageStyle && (
+                <div
+                  ref={surfaceRef}
+                  tabIndex={0}
+                  onKeyDown={onKeyDown}
+                  className="min-h-[110px] cursor-text rounded-xl bg-slate-900 p-4 text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
+                  style={{ fontSize, whiteSpace: 'pre-wrap', fontFamily: MANGAL_FONT }}
+                  onClick={() => surfaceRef.current?.focus()}
+                >
+                  {session.typed.length === 0 && (
+                    <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Click here and start typing…
+                    </span>
+                  )}
+                  {[...session.typed].map((ch, i) => (
+                    <span
+                      key={i}
+                      className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                    >
+                      {ch === '\n' ? '\u21B5\n' : ch}
+                    </span>
+                  ))}
+                  <span className="animate-pulse text-brand-400">▎</span>
+                </div>
+              )}
 
               {showStatusBar && <StatBar stats={session.stats} />}
 
