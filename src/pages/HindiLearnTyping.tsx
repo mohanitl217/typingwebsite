@@ -164,34 +164,37 @@ export default function HindiLearnTyping() {
       <div className="grid gap-4 lg:grid-cols-[200px_1fr_220px]">
         {/* Left: font + finger guide */}
         <aside className="space-y-4">
-          <div className="card p-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Select Font</div>
-            <div className="mt-2 space-y-1">
-              {FONTS.map((f) => (
-                <label key={f.id} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="hindi-font"
-                    checked={fontId === f.id}
-                    onChange={() => setFontId(f.id)}
-                  />
-                  {f.label}
-                </label>
-              ))}
+          {/* Font / Display options are hidden while reading instructions */}
+          {stage !== 0 && (
+            <div className="card p-4">
+              <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Select Font</div>
+              <div className="mt-2 space-y-1">
+                {FONTS.map((f) => (
+                  <label key={f.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="hindi-font"
+                      checked={fontId === f.id}
+                      onChange={() => setFontId(f.id)}
+                    />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+              <label className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2 text-sm">
+                <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
+                Bold
+              </label>
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={imageStyle}
+                  onChange={(e) => setImageStyle(e.target.checked)}
+                />
+                Image Style (single line)
+              </label>
             </div>
-            <label className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-2 text-sm">
-              <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
-              Bold
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={imageStyle}
-                onChange={(e) => setImageStyle(e.target.checked)}
-              />
-              Image Style (single line)
-            </label>
-          </div>
+          )}
           {/* Finger placement guidance is only relevant while reading instructions */}
           {stage === 0 && <FingerGuide />}
         </aside>
@@ -300,6 +303,8 @@ export default function HindiLearnTyping() {
 
         {/* Right: settings */}
         <aside className="space-y-4">
+          {/* Settings are hidden while reading instructions */}
+          {stage !== 0 && (
           <div className="card p-4">
             <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Settings</div>
 
@@ -361,6 +366,7 @@ export default function HindiLearnTyping() {
               </label>
             </div>
           </div>
+          )}
 
           {!getStoredUser() && (
             <div className="card bg-brand-50 p-4 text-sm text-brand-800 ring-brand-200">
