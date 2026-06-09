@@ -8,7 +8,7 @@ import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
 import LineTyping from '../components/LineTyping'
-import { useTypingSession } from '../lib/useTypingSession'
+import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
 
 const STAGES = ['Read Instructions', 'Learn Keys', 'Practice Words', 'Type Paragraphs'] as const
@@ -29,7 +29,11 @@ export default function HindiUnicodeLearnTyping() {
   const [showStatusBar, setShowStatusBar] = useState(false)
   const [showResult, setShowResult] = useState(false)
 
-  const settings = { backspaceMode: 'full' as const, moveOnError: true, playSounds: false }
+  const [settings, setSettings] = useState({
+    backspaceMode: 'full' as BackspaceMode,
+    moveOnError: true,
+    playSounds: false,
+  })
 
   const exercises = useMemo(() => {
     if (stage === 1) return lesson.drills
@@ -171,7 +175,26 @@ export default function HindiUnicodeLearnTyping() {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+      <div className="grid gap-4 lg:grid-cols-[200px_1fr_220px]">
+        {/* Left: display options */}
+        <aside className="space-y-4">
+          <div className="card p-4">
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Options</div>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
+              Bold
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
+            </label>
+          </div>
+        </aside>
+
         <div className="space-y-3">
           {stage === 0 ? (
             <Instructions lesson={lesson} onStart={() => setStage(1)} />
@@ -277,44 +300,65 @@ export default function HindiUnicodeLearnTyping() {
         {/* Right: settings */}
         <aside className="space-y-4">
           <div className="card p-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Options</div>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
-              Bold
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={imageStyle}
-                onChange={(e) => setImageStyle(e.target.checked)}
-              />
-              Image Style (single line)
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showKeyboard}
-                onChange={(e) => setShowKeyboard(e.target.checked)}
-              />
-              Show Keyboard
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showStatusBar}
-                onChange={(e) => setShowStatusBar(e.target.checked)}
-              />
-              Show Status Bar
-            </label>
-          </div>
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Settings</div>
 
-          <div className="card p-4 text-xs text-slate-500">
-            <div className="font-bold text-slate-600">{layout.label}</div>
-            <p className="mt-1">{layout.description}</p>
-            <p className="mt-2">
-              Type the highlighted key on the on-screen keyboard. Output is real Unicode Devanagari,
-              so it works in any Mangal/Unicode application.
-            </p>
+            <div className="mt-3">
+              <div className="text-xs font-semibold text-slate-500">Backspace Options</div>
+              <div className="mt-1 space-y-1">
+                {(
+                  [
+                    ['full', 'Full Backspace'],
+                    ['word', 'One Word Backspace'],
+                    ['off', 'Deactivate Backspace'],
+                  ] as [BackspaceMode, string][]
+                ).map(([val, label]) => (
+                  <label key={val} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="bs"
+                      checked={settings.backspaceMode === val}
+                      onChange={() => setSettings((s) => ({ ...s, backspaceMode: val }))}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showStatusBar}
+                  onChange={(e) => setShowStatusBar(e.target.checked)}
+                />
+                Show Status Bar
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showKeyboard}
+                  onChange={(e) => setShowKeyboard(e.target.checked)}
+                />
+                Show Keyboard
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.playSounds}
+                  onChange={(e) => setSettings((s) => ({ ...s, playSounds: e.target.checked }))}
+                />
+                Play Sounds
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.moveOnError}
+                  onChange={(e) => setSettings((s) => ({ ...s, moveOnError: e.target.checked }))}
+                />
+                Move on Error
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-center">
