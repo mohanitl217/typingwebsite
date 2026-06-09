@@ -6,6 +6,7 @@ import { Hand, fingersForChar } from '../components/Hands'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
+import LineTyping from '../components/LineTyping'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
 
@@ -28,6 +29,7 @@ export default function HindiLearnTyping() {
   const [bold, setBold] = useState(false)
   const [fontId, setFontId] = useState<(typeof FONTS)[number]['id']>('krutidev')
   const [showKeyboard, setShowKeyboard] = useState(true)
+  const [imageStyle, setImageStyle] = useState(false)
   const [showResult, setShowResult] = useState(false)
   const [showStatusBar, setShowStatusBar] = useState(false)
 
@@ -181,6 +183,14 @@ export default function HindiLearnTyping() {
               <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
               Bold
             </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
+            </label>
           </div>
           <FingerGuide />
         </aside>
@@ -191,17 +201,28 @@ export default function HindiLearnTyping() {
             <Instructions lesson={lesson} fontFamily={fontFamily} onStart={() => setStage(1)} />
           ) : (
             <>
-              <TypingText
-                target={target}
-                typed={session.typed}
-                highlight="word-error"
-                fontSize={fontSize}
-                bold={bold}
-                showScrollbar
-                autoScroll={false}
-                fontFamily={fontFamily}
-                className="min-h-[120px]"
-              />
+              {imageStyle ? (
+                <LineTyping
+                  target={target}
+                  typed={session.typed}
+                  bold={bold}
+                  fontFamily={fontFamily}
+                  onKeyDown={session.onKeyDown}
+                  inputRef={surfaceRef}
+                />
+              ) : (
+                <TypingText
+                  target={target}
+                  typed={session.typed}
+                  highlight="word-error"
+                  fontSize={fontSize}
+                  bold={bold}
+                  showScrollbar
+                  autoScroll={false}
+                  fontFamily={fontFamily}
+                  className="min-h-[120px]"
+                />
+              )}
 
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -234,30 +255,32 @@ export default function HindiLearnTyping() {
                 <FontSizer fontSize={fontSize} setFontSize={setFontSize} />
               </div>
 
-              {/* typing surface (rendered in the selected legacy font) */}
-              <div
-                ref={surfaceRef}
-                tabIndex={0}
-                onKeyDown={session.onKeyDown}
-                className="min-h-[120px] cursor-text rounded-xl bg-slate-900 p-4 text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
-                style={{ fontSize, whiteSpace: 'pre-wrap', fontFamily }}
-                onClick={() => surfaceRef.current?.focus()}
-              >
-                {session.typed.length === 0 && (
-                  <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif' }}>
-                    Click here and start typing…
-                  </span>
-                )}
-                {session.typed.split('').map((ch, i) => (
-                  <span
-                    key={i}
-                    className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
-                  >
-                    {ch === '\n' ? '\u21B5\n' : ch}
-                  </span>
-                ))}
-                <span className="animate-pulse text-brand-400">▎</span>
-              </div>
+              {/* typing surface (hidden in image style — the strip is the input) */}
+              {!imageStyle && (
+                <div
+                  ref={surfaceRef}
+                  tabIndex={0}
+                  onKeyDown={session.onKeyDown}
+                  className="min-h-[120px] cursor-text rounded-xl bg-slate-900 p-4 text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
+                  style={{ fontSize, whiteSpace: 'pre-wrap', fontFamily }}
+                  onClick={() => surfaceRef.current?.focus()}
+                >
+                  {session.typed.length === 0 && (
+                    <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Click here and start typing…
+                    </span>
+                  )}
+                  {session.typed.split('').map((ch, i) => (
+                    <span
+                      key={i}
+                      className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                    >
+                      {ch === '\n' ? '\u21B5\n' : ch}
+                    </span>
+                  ))}
+                  <span className="animate-pulse text-brand-400">▎</span>
+                </div>
+              )}
 
               {showStatusBar && <StatBar stats={session.stats} />}
 

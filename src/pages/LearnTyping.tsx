@@ -6,6 +6,7 @@ import { Hand, fingersForChar } from '../components/Hands'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
+import LineTyping from '../components/LineTyping'
 import { useTypingSession, type BackspaceMode } from '../lib/useTypingSession'
 import { api, getStoredUser } from '../api'
 
@@ -21,6 +22,7 @@ export default function LearnTyping() {
   const [exIndex, setExIndex] = useState(0)
   const [fontSize, setFontSize] = useState(18)
   const [bold, setBold] = useState(false)
+  const [imageStyle, setImageStyle] = useState(false)
   const [showKeyboard, setShowKeyboard] = useState(true)
   const [showResult, setShowResult] = useState(false)
   // Live status bar is hidden by default; a checkbox in Settings shows/hides it.
@@ -160,10 +162,18 @@ export default function LearnTyping() {
         {/* Left: font + finger guide */}
         <aside className="space-y-4">
           <div className="card p-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Select Font</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Display</div>
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
               Bold
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={imageStyle}
+                onChange={(e) => setImageStyle(e.target.checked)}
+              />
+              Image Style (single line)
             </label>
           </div>
           <FingerGuide lessonKeys={lesson.keys} />
@@ -175,17 +185,27 @@ export default function LearnTyping() {
             <Instructions lesson={lesson} onStart={() => setStage(1)} />
           ) : (
             <>
-              {/* reference text */}
-              <TypingText
-                target={target}
-                typed={session.typed}
-                highlight="word-error"
-                fontSize={fontSize}
-                bold={bold}
-                showScrollbar
-                autoScroll={false}
-                className="min-h-[120px]"
-              />
+              {/* reference text (or image-style input strip) */}
+              {imageStyle ? (
+                <LineTyping
+                  target={target}
+                  typed={session.typed}
+                  bold={bold}
+                  onKeyDown={session.onKeyDown}
+                  inputRef={surfaceRef}
+                />
+              ) : (
+                <TypingText
+                  target={target}
+                  typed={session.typed}
+                  highlight="word-error"
+                  fontSize={fontSize}
+                  bold={bold}
+                  showScrollbar
+                  autoScroll={false}
+                  className="min-h-[120px]"
+                />
+              )}
 
               {/* exercise controls */}
               <div className="flex items-center justify-between gap-2">
@@ -219,28 +239,30 @@ export default function LearnTyping() {
                 <FontSizer fontSize={fontSize} setFontSize={setFontSize} />
               </div>
 
-              {/* typing surface */}
-              <div
-                ref={surfaceRef}
-                tabIndex={0}
-                onKeyDown={session.onKeyDown}
-                className="min-h-[120px] cursor-text rounded-xl bg-slate-900 p-4 font-mono text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
-                style={{ fontSize, whiteSpace: 'pre-wrap' }}
-                onClick={() => surfaceRef.current?.focus()}
-              >
-                {session.typed.length === 0 && (
-                  <span className="text-slate-500">Click here and start typing…</span>
-                )}
-                {session.typed.split('').map((ch, i) => (
-                  <span
-                    key={i}
-                    className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
-                  >
-                    {ch === '\n' ? '\u21B5\n' : ch}
-                  </span>
-                ))}
-                <span className="animate-pulse text-brand-400">▎</span>
-              </div>
+              {/* typing surface (hidden in image style — the strip is the input) */}
+              {!imageStyle && (
+                <div
+                  ref={surfaceRef}
+                  tabIndex={0}
+                  onKeyDown={session.onKeyDown}
+                  className="min-h-[120px] cursor-text rounded-xl bg-slate-900 p-4 font-mono text-slate-100 outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-brand-500"
+                  style={{ fontSize, whiteSpace: 'pre-wrap' }}
+                  onClick={() => surfaceRef.current?.focus()}
+                >
+                  {session.typed.length === 0 && (
+                    <span className="text-slate-500">Click here and start typing…</span>
+                  )}
+                  {session.typed.split('').map((ch, i) => (
+                    <span
+                      key={i}
+                      className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                    >
+                      {ch === '\n' ? '\u21B5\n' : ch}
+                    </span>
+                  ))}
+                  <span className="animate-pulse text-brand-400">▎</span>
+                </div>
+              )}
 
               {showStatusBar && <StatBar stats={session.stats} />}
 
