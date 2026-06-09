@@ -161,21 +161,24 @@ export default function LearnTyping() {
       <div className="grid gap-4 lg:grid-cols-[200px_1fr_220px]">
         {/* Left: font + finger guide */}
         <aside className="space-y-4">
-          <div className="card p-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Display</div>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
-              Bold
-            </label>
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={imageStyle}
-                onChange={(e) => setImageStyle(e.target.checked)}
-              />
-              Image Style (single line)
-            </label>
-          </div>
+          {/* Display options are hidden while reading instructions */}
+          {stage !== 0 && (
+            <div className="card p-4">
+              <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Display</div>
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={bold} onChange={(e) => setBold(e.target.checked)} />
+                Bold
+              </label>
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={imageStyle}
+                  onChange={(e) => setImageStyle(e.target.checked)}
+                />
+                Image Style (single line)
+              </label>
+            </div>
+          )}
           {/* Finger placement guidance is only relevant while reading instructions */}
           {stage === 0 && <FingerGuide lessonKeys={lesson.keys} />}
         </aside>
@@ -282,6 +285,8 @@ export default function LearnTyping() {
 
         {/* Right: settings */}
         <aside className="space-y-4">
+          {/* Settings are hidden while reading instructions */}
+          {stage !== 0 && (
           <div className="card p-4">
             <div className="text-xs font-bold uppercase tracking-wide text-slate-400">Settings</div>
 
@@ -343,6 +348,7 @@ export default function LearnTyping() {
               </label>
             </div>
           </div>
+          )}
 
           {!getStoredUser() && (
             <div className="card bg-brand-50 p-4 text-sm text-brand-800 ring-brand-200">
