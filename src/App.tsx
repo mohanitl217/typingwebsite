@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import LearnTyping from './pages/LearnTyping'
@@ -35,7 +36,9 @@ function MangalTestRoute() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route path="/" element={<Layout><Home /></Layout>} />
       <Route path="/learn/:lessonId" element={<Layout><LearnTyping /></Layout>} />
       <Route path="/test" element={<Layout><TakeTest /></Layout>} />
@@ -72,5 +75,19 @@ export default function App() {
       <Route path="/admin/dashboard" element={<Layout><AdminDashboard /></Layout>} />
       <Route path="*" element={<Layout><Home /></Layout>} />
     </Routes>
+    </>
   )
+}
+
+/**
+ * Resets the window scroll position to the top whenever the route changes.
+ * Without this, navigating from a scrolled-down page (e.g. clicking "Take Test"
+ * on the Home page) would open the next page already scrolled down.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
 }
