@@ -457,7 +457,7 @@ export default function TakeTest({
           <div
             className={
               showSettings
-                ? 'grid gap-4 lg:grid-cols-[200px_1fr_260px]'
+                ? 'grid items-start gap-4 lg:grid-cols-[240px_minmax(0,1fr)_240px]'
                 : 'grid gap-4 lg:grid-cols-1'
             }
           >
@@ -476,7 +476,7 @@ export default function TakeTest({
                 setAutoScroll={setAutoScroll}
               />
             )}
-            <div>
+            <div className="mx-auto w-full max-w-3xl">
               {loading ? (
                 <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
               ) : exercises.length === 0 ? (
@@ -512,10 +512,12 @@ export default function TakeTest({
               />
             ) : (
               <button
-                className="btn-ghost fixed bottom-4 right-4 z-30 shadow-lg ring-1 ring-slate-300"
+                className="group fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-brand-600/30 ring-1 ring-white/20 transition hover:scale-105 hover:shadow-xl active:scale-95"
                 onClick={() => setShowSettings(true)}
+                aria-label="Show settings"
               >
-                ⚙ Show Settings
+                <GearIcon className="transition group-hover:rotate-90" />
+                <span>Settings</span>
               </button>
             )}
           </div>
@@ -680,13 +682,20 @@ function Settings(props: any) {
   } = props
   return (
     <aside className="card h-fit space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-extrabold text-slate-700">Settings</div>
+      <div className="-mx-4 -mt-4 mb-1 flex items-center justify-between rounded-t-2xl bg-gradient-to-r from-brand-50 to-slate-50 px-4 py-3 ring-1 ring-brand-100/60">
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-600 text-white shadow-sm">
+            <GearIcon size={15} />
+          </span>
+          <span className="text-sm font-extrabold text-slate-800">Settings</span>
+        </div>
         <button
-          className="rounded-md px-2 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-300 hover:bg-slate-100"
+          className="group inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200"
           onClick={onHide}
+          aria-label="Hide settings"
         >
-          Hide Settings ✕
+          <CloseIcon size={13} />
+          <span>Hide</span>
         </button>
       </div>
 
@@ -764,8 +773,7 @@ function Settings(props: any) {
   )
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
+function Group({ title, children }: { title: string; children: React.ReactNode }) {  return (
     <div className="border-t border-slate-100 pt-3 first:border-0 first:pt-0">
       <div className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</div>
       <div className="mt-2 space-y-1.5">{children}</div>
@@ -811,5 +819,41 @@ function Check({
       />
       {label}
     </label>
+  )
+}
+
+
+function GearIcon({ size = 18, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
   )
 }
