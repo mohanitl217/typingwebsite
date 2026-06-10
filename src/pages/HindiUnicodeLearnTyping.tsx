@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { mangalLessons, getMangalLesson } from '../data/mangalLessons'
-import { getHindiLayout, hindiLayouts, findKeyForNext, MANGAL_FONT } from '../lib/hindiLayouts'
+import {
+  getHindiLayout,
+  hindiLayouts,
+  findKeyForNext,
+  rawKeyOutput,
+  MANGAL_FONT,
+  type HindiLayout,
+} from '../lib/hindiLayouts'
 import { useHindiLayoutInput } from '../lib/useHindiLayoutInput'
-import UnicodeKeyboard from '../components/UnicodeKeyboard'
+import UnicodeKeyboard, { keyDefToEventCode } from '../components/UnicodeKeyboard'
+import { keyboardRows, fingerNames } from '../data/keyboard'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
 import TypingText from '../components/TypingText'
@@ -251,6 +259,7 @@ export default function HindiUnicodeLearnTyping() {
                     »
                   </button>
                 </div>
+                <KeyHint layout={layout} nextCode={nextKey?.code} nextShift={nextKey?.shift} />
                 <div className="flex items-center gap-1">
                   <button className="btn-ghost px-2" onClick={() => setFontSize(Math.max(16, fontSize - 2))}>
                     A-
@@ -448,5 +457,90 @@ function Instructions({
         Start practising →
       </button>
     </div>
+  )
+}
+
+
+/** Readable QWERTY label for a KeyboardEvent.code (e.g. "KeyD" → "D"). */
+const CODE_LABELS: Record<string, string> = {
+  Backquote: '`',
+  Minus: '-',
+  Equal: '=',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Backslash: '\\',
+  Semicolon: ';',
+  Quote: "'",
+  Comma: ',',
+  Period: '.',
+  Slash: '/',
+  Space: 'Space',
+}
+function codeToLabel(code: string): string {
+  if (code.startsWith('Key')) return code.slice(3)
+  if (code.startsWith('Digit')) return code.slice(5)
+  return CODE_LABELS[code] ?? code
+}
+
+/**
+ * Shows which physical QWERTY key to press next for the Unicode (Mangal)
+ * layouts (Remington GAIL / InScript / Remington CBI). Unlike the glyph fonts,
+ * one key press maps to real Devanagari via the layout IME, so we preview the
+ * exact output that the keystroke produces (plus Shift + finger guidance).
+ */
+function KeyHint({
+  layout,
+  nextCode,
+  nextShift,
+}: {
+  layout: HindiLayout
+  nextCode?: string | null
+  nextShift?: boolean
+}) {
+  // Keep the slot present (centred) so surrounding controls don't jump around.
+  if (!nextCode) return <div className="flex-1" />
+
+  const keyDef = keyboardRows.flat().find((d) => keyDefToEventCode(d) === nextCode)
+  const keyLabel = codeToLabel(nextCode)
+  const glyph = rawKeyOutput(layout, nextCode, !!nextShift, false)
+  const showGlyph = Boolean(glyph && glyph.trim())
+
+  return (
+    <div className="flex flex-1 flex-wrap items-center justify-center gap-1.5 text-sm">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Press</span>
+      {nextShift && (
+        <>
+          <Keycap>⇧ Shift</Keycap>
+          <span className="text-slate-300">+</span>
+        </>
+      )}
+      <Keycap wide={keyLabel.length > 1}>{keyLabel}</Keycap>
+      {showGlyph && (
+        <>
+          <span className="text-slate-300">→</span>
+          <span className="leading-none text-brand-700" style={{ fontFamily: MANGAL_FONT, fontSize: 22 }}>
+            {glyph}
+          </span>
+        </>
+      )}
+      {keyDef && (
+        <span className="ml-1 hidden text-xs font-medium text-slate-400 md:inline">
+          ({fingerNames[keyDef.finger]})
+        </span>
+      )}
+    </div>
+  )
+}
+
+function Keycap({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  return (
+    <span
+      className={[
+        'inline-grid h-8 place-items-center rounded-md bg-slate-900 text-xs font-bold text-white shadow-sm ring-1 ring-slate-700',
+        wide ? 'px-2.5' : 'min-w-[2rem]',
+      ].join(' ')}
+    >
+      {children}
+    </span>
   )
 }
