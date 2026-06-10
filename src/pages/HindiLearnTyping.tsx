@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hindiLessons, getHindiLesson } from '../data/hindiLessons'
 import VirtualKeyboard from '../components/VirtualKeyboard'
+import { lookupChar, fingerNames } from '../data/keyboard'
 import { Hand, fingersForChar } from '../components/Hands'
 import StatBar from '../components/StatBar'
 import CertificateResult from '../components/CertificateResult'
@@ -256,6 +257,7 @@ export default function HindiLearnTyping() {
                     »
                   </button>
                 </div>
+                <KeyHint nextChar={nextChar} glyphFont={fontFamily} />
                 <FontSizer fontSize={fontSize} setFontSize={setFontSize} />
               </div>
 
@@ -476,8 +478,7 @@ function FingerGuide() {
   )
 }
 
-function FontSizer({ fontSize, setFontSize }: { fontSize: number; setFontSize: (n: number) => void }) {
-  return (
+function FontSizer({ fontSize, setFontSize }: { fontSize: number; setFontSize: (n: number) => void }) {  return (
     <div className="flex items-center gap-1">
       <button className="btn-ghost px-2" onClick={() => setFontSize(Math.max(14, fontSize - 2))}>
         A-
@@ -487,5 +488,60 @@ function FontSizer({ fontSize, setFontSize }: { fontSize: number; setFontSize: (
         A+
       </button>
     </div>
+  )
+}
+
+
+/**
+ * Shows which physical QWERTY key to press for the current character.
+ * KrutiDev/DevLys are glyph fonts, so the character to type IS the ASCII key —
+ * we map it back to the keycap (plus Shift, if required) and also preview the
+ * Devanagari glyph that the keystroke produces.
+ */
+function KeyHint({ nextChar, glyphFont }: { nextChar?: string; glyphFont: string }) {
+  // Keep the slot present (centred) even when there is nothing to suggest, so
+  // the surrounding controls don't shift around.
+  const info = nextChar ? lookupChar(nextChar) : null
+  if (!nextChar || !info) return <div className="flex-1" />
+
+  const isLetter = /^[a-z]$/i.test(info.code)
+  const keyLabel = info.code === ' ' ? 'Space' : isLetter ? info.code.toUpperCase() : info.code
+  const showGlyph = nextChar !== ' ' && nextChar !== '\n'
+
+  return (
+    <div className="flex flex-1 flex-wrap items-center justify-center gap-1.5 text-sm">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Press</span>
+      {info.shift && (
+        <>
+          <Keycap>⇧ Shift</Keycap>
+          <span className="text-slate-300">+</span>
+        </>
+      )}
+      <Keycap wide={keyLabel.length > 1}>{keyLabel}</Keycap>
+      {showGlyph && (
+        <>
+          <span className="text-slate-300">→</span>
+          <span className="leading-none text-brand-700" style={{ fontFamily: glyphFont, fontSize: 22 }}>
+            {nextChar}
+          </span>
+        </>
+      )}
+      <span className="ml-1 hidden text-xs font-medium text-slate-400 md:inline">
+        ({fingerNames[info.finger]})
+      </span>
+    </div>
+  )
+}
+
+function Keycap({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  return (
+    <span
+      className={[
+        'inline-grid h-8 place-items-center rounded-md bg-slate-900 text-xs font-bold text-white shadow-sm ring-1 ring-slate-700',
+        wide ? 'px-2.5' : 'min-w-[2rem]',
+      ].join(' ')}
+    >
+      {children}
+    </span>
   )
 }
