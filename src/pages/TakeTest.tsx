@@ -468,6 +468,8 @@ export default function TakeTest({
                 setFontId={setFontId}
                 bold={bold}
                 setBold={setBold}
+                showStatusBar={showStatusBar}
+                setShowStatusBar={setShowStatusBar}
               />
             )}
             <div>
@@ -493,8 +495,6 @@ export default function TakeTest({
                 setBackspaceMode={setBackspaceMode}
                 highlight={highlight}
                 setHighlight={setHighlight}
-                showStatusBar={showStatusBar}
-                setShowStatusBar={setShowStatusBar}
                 showScrollbar={showScrollbar}
                 setShowScrollbar={setShowScrollbar}
                 autoScroll={autoScroll}
@@ -608,12 +608,16 @@ function LeftPanel({
   setFontId,
   bold,
   setBold,
+  showStatusBar,
+  setShowStatusBar,
 }: {
   fontOptions?: FontOption[]
   fontId: string
   setFontId: (v: string) => void
   bold: boolean
   setBold: (v: boolean) => void
+  showStatusBar: boolean
+  setShowStatusBar: (v: boolean) => void
 }) {
   return (
     <aside className="card h-fit space-y-4 p-4">
@@ -632,6 +636,13 @@ function LeftPanel({
       )}
       <Group title="Text">
         <Check checked={bold} onChange={setBold} label="Bold" />
+      </Group>
+      <Group title="Status Bar">
+        <Check
+          checked={showStatusBar}
+          onChange={setShowStatusBar}
+          label="Show Status Bar (Speed / Accuracy / Errors / Time)"
+        />
       </Group>
     </aside>
   )
@@ -658,8 +669,6 @@ function Settings(props: any) {
     setAllowParagraphs,
     allowTabs,
     setAllowTabs,
-    showStatusBar,
-    setShowStatusBar,
   } = props
   return (
     <aside className="card h-fit space-y-4 p-4">
@@ -672,14 +681,6 @@ function Settings(props: any) {
           Hide Settings ✕
         </button>
       </div>
-
-      <Group title="Status Bar">
-        <Check
-          checked={showStatusBar}
-          onChange={setShowStatusBar}
-          label="Show Status Bar (Speed / Accuracy / Errors / Time)"
-        />
-      </Group>
 
       <Group title="Backspace Options">
         {(
