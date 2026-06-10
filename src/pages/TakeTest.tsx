@@ -468,6 +468,10 @@ export default function TakeTest({
                 setFontId={setFontId}
                 bold={bold}
                 setBold={setBold}
+                showScrollbar={showScrollbar}
+                setShowScrollbar={setShowScrollbar}
+                autoScroll={autoScroll}
+                setAutoScroll={setAutoScroll}
               />
             )}
             <div>
@@ -495,10 +499,6 @@ export default function TakeTest({
                 setHighlight={setHighlight}
                 showStatusBar={showStatusBar}
                 setShowStatusBar={setShowStatusBar}
-                showScrollbar={showScrollbar}
-                setShowScrollbar={setShowScrollbar}
-                autoScroll={autoScroll}
-                setAutoScroll={setAutoScroll}
                 applyWordLimit={applyWordLimit}
                 setApplyWordLimit={setApplyWordLimit}
                 wordLimit={wordLimit}
@@ -608,12 +608,20 @@ function LeftPanel({
   setFontId,
   bold,
   setBold,
+  showScrollbar,
+  setShowScrollbar,
+  autoScroll,
+  setAutoScroll,
 }: {
   fontOptions?: FontOption[]
   fontId: string
   setFontId: (v: string) => void
   bold: boolean
   setBold: (v: boolean) => void
+  showScrollbar: boolean
+  setShowScrollbar: (v: boolean) => void
+  autoScroll: boolean
+  setAutoScroll: (v: boolean) => void
 }) {
   return (
     <aside className="card h-fit space-y-4 p-4">
@@ -633,6 +641,10 @@ function LeftPanel({
       <Group title="Text">
         <Check checked={bold} onChange={setBold} label="Bold" />
       </Group>
+      <Group title="Scrollbar Options">
+        <Check checked={showScrollbar} onChange={setShowScrollbar} label="Show Scrollbar" />
+        <Check checked={autoScroll} onChange={setAutoScroll} label="Auto Scroll" />
+      </Group>
     </aside>
   )
 }
@@ -644,10 +656,6 @@ function Settings(props: any) {
     setBackspaceMode,
     highlight,
     setHighlight,
-    showScrollbar,
-    setShowScrollbar,
-    autoScroll,
-    setAutoScroll,
     applyWordLimit,
     setApplyWordLimit,
     wordLimit,
@@ -716,11 +724,6 @@ function Settings(props: any) {
             label={label}
           />
         ))}
-      </Group>
-
-      <Group title="Scrollbar Options">
-        <Check checked={showScrollbar} onChange={setShowScrollbar} label="Show Scrollbar" />
-        <Check checked={autoScroll} onChange={setAutoScroll} label="Auto Scroll" />
       </Group>
 
       <Group title="Paragraph Settings">
