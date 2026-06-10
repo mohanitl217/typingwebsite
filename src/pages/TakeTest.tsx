@@ -324,7 +324,7 @@ export default function TakeTest({
           showScrollbar={showScrollbar}
           autoScroll={autoScroll}
           fontFamily={effectiveFontFamily}
-          className={mode === 'exam' ? 'max-h-[40vh]' : showSettings ? 'max-h-72' : 'max-h-[420px]'}
+          className={mode === 'exam' ? 'max-h-[40vh]' : 'max-h-72'}
         />
       )}
       {hideReference && (
@@ -411,7 +411,7 @@ export default function TakeTest({
         onClick={() => surfaceRef.current?.focus()}
         className={[
           'cursor-text rounded-xl bg-white p-4 font-mono text-slate-800 outline-none ring-1 ring-slate-300 focus:ring-2 focus:ring-brand-500',
-          mode === 'exam' ? 'flex-1 overflow-auto' : showSettings ? 'min-h-[200px]' : 'min-h-[320px]',
+          mode === 'exam' ? 'flex-1 overflow-auto' : 'min-h-[200px]',
           showScrollbar ? '' : 'no-scrollbar',
         ].join(' ')}
         style={{ fontSize, whiteSpace: 'pre-wrap', ...(effectiveFontFamily ? { fontFamily: effectiveFontFamily } : {}) }}
@@ -476,7 +476,7 @@ export default function TakeTest({
                 setAutoScroll={setAutoScroll}
               />
             )}
-            <div className={showSettings ? 'mx-auto w-full max-w-3xl' : 'w-full'}>
+            <div className="mx-auto w-full max-w-3xl">
               {loading ? (
                 <div className="card p-8 text-center text-slate-500">Loading exercises…</div>
               ) : exercises.length === 0 ? (
