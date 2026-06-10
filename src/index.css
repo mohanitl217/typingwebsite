@@ -1,11 +1,10 @@
+/* Inter UI font + Unicode Devanagari font for real Hindi (Unicode) exercises.
+   @import must precede the Tailwind directives per CSS spec. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Unicode Devanagari font for real Hindi (Unicode) exercises. Loaded so that
-   passages containing actual Devanagari characters render correctly instead of
-   being garbled by the legacy KrutiDev/DevLys glyph fonts. */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap');
 
 :root {
   font-family: 'Inter', system-ui, sans-serif;
@@ -15,6 +14,10 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -49,6 +52,21 @@ body {
   .input {
     @apply w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
   }
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-500 via-brand-600 to-accent-500 bg-clip-text text-transparent;
+  }
+  .nav-link {
+    @apply rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900;
+  }
+  .nav-link-active {
+    @apply bg-brand-50 text-brand-700;
+  }
+}
+
+/* Subtle dotted grid background used in the hero. */
+.bg-grid {
+  background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.18) 1px, transparent 0);
+  background-size: 22px 22px;
 }
 
 
