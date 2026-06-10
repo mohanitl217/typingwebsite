@@ -95,6 +95,13 @@ function signAdmin(admin) {
   })
 }
 
+/** Strip sensitive fields (passwordHash) before sending a user to the client. */
+function publicUser(u) {
+  if (!u) return u
+  const { passwordHash, ...rest } = u
+  return rest
+}
+
 function authAdmin(req, res, next) {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : null
@@ -124,6 +131,63 @@ app.post('/api/admin/login', (req, res) => {
 
 app.get('/api/admin/me', authAdmin, (req, res) => {
   res.json({ admin: { id: req.admin.id, username: req.admin.username } })
+})
+
+// ---------- Unified Auth (users + admin detection) ----------
+// Sign up a new user with name, email, mobile and password.
+app.post('/api/auth/register', async (req, res) => {
+  const { name, email, mobile, password } = req.body || {}
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email and password are required' })
+  }
+  const emailLc = String(email).trim().toLowerCase()
+  // Don't allow registering with an email that clashes with an admin username.
+  if (db.data.admins.some((a) => a.username.toLowerCase() === emailLc)) {
+    return res.status(409).json({ error: 'This email cannot be used' })
+  }
+  if (db.data.users.some((u) => (u.email || '').toLowerCase() === emailLc)) {
+    return res.status(409).json({ error: 'This email is already registered. Please sign in.' })
+  }
+  const user = {
+    id: 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name: String(name).trim(),
+    email: String(email).trim(),
+    mobile: String(mobile || '').trim(),
+    passwordHash: bcrypt.hashSync(String(password), 10),
+    active: true,
+    createdAt: new Date().toISOString(),
+  }
+  db.data.users.push(user)
+  await save()
+  res.status(201).json({ role: 'user', user: publicUser(user) })
+})
+
+// Unified sign in: checks admin credentials first, then user credentials.
+// The "email" field also accepts an admin username so that entering admin
+// credentials automatically opens admin mode.
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body || {}
+  const identifier = String(email || '').trim()
+  const pwd = String(password || '')
+
+  // 1) Admin? -> return an admin token so the client opens admin mode.
+  const admin = db.data.admins.find((a) => a.username.toLowerCase() === identifier.toLowerCase())
+  if (admin && bcrypt.compareSync(pwd, admin.passwordHash)) {
+    return res.json({
+      role: 'admin',
+      token: signAdmin(admin),
+      admin: { id: admin.id, username: admin.username },
+    })
+  }
+
+  // 2) Regular user (matched by email).
+  const user = db.data.users.find((u) => (u.email || '').toLowerCase() === identifier.toLowerCase())
+  if (user && user.passwordHash && bcrypt.compareSync(pwd, user.passwordHash)) {
+    if (user.active === false) return res.status(403).json({ error: 'Your account is blocked' })
+    return res.json({ role: 'user', user: publicUser(user) })
+  }
+
+  return res.status(401).json({ error: 'Invalid email/username or password' })
 })
 
 // ---------- Exercises (public read) ----------
@@ -198,7 +262,7 @@ app.post('/api/users', async (req, res) => {
 
 app.get('/api/admin/users', authAdmin, (req, res) => {
   const withStats = db.data.users.map((u) => ({
-    ...u,
+    ...publicUser(u),
     attempts: db.data.results.filter((r) => r.userId === u.id).length,
   }))
   res.json(withStats)

@@ -8,8 +8,6 @@ import TakeTest from './pages/TakeTest'
 import NumberTyping from './pages/NumberTyping'
 import HindiLearnTyping from './pages/HindiLearnTyping'
 import HindiUnicodeLearnTyping from './pages/HindiUnicodeLearnTyping'
-import SignIn from './pages/SignIn'
-import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import { getHindiLayout, hindiLayouts } from './lib/hindiLayouts'
 
@@ -70,8 +68,6 @@ export default function App() {
       />
       <Route path="/hindi/mangal/:layout/test" element={<MangalTestRoute />} />
 
-      <Route path="/login" element={<Layout><SignIn /></Layout>} />
-      <Route path="/admin" element={<Layout><AdminLogin /></Layout>} />
       <Route path="/admin/dashboard" element={<Layout><AdminDashboard /></Layout>} />
       <Route path="*" element={<Layout><Home /></Layout>} />
     </Routes>
