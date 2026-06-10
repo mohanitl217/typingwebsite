@@ -55,6 +55,20 @@ export const api = {
   // users
   registerUser: (name: string) =>
     request<User>('/api/users', { method: 'POST', body: JSON.stringify({ name }) }),
+  // unified auth (sign up / sign in). Sign in detects admin vs user on the server.
+  authRegister: (payload: { name: string; email: string; mobile: string; password: string }) =>
+    request<{ role: 'user'; user: User }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  authLogin: (email: string, password: string) =>
+    request<
+      | { role: 'admin'; token: string; admin: { id: string; username: string } }
+      | { role: 'user'; user: User }
+    >('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
   // results
   saveResult: (payload: Partial<TestResult>) =>
     request<TestResult>('/api/results', { method: 'POST', body: JSON.stringify(payload) }),

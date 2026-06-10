@@ -352,9 +352,13 @@ export default function LearnTyping() {
 
           {!getStoredUser() && (
             <div className="card bg-brand-50 p-4 text-sm text-brand-800 ring-brand-200">
-              <Link to="/login" className="font-semibold underline">
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => window.dispatchEvent(new Event('open-auth'))}
+              >
                 Sign in
-              </Link>{' '}
+              </button>{' '}
               to save your progress and reports.
             </div>
           )}

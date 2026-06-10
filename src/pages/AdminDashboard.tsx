@@ -40,7 +40,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!getToken()) {
-      navigate('/admin')
+      navigate('/')
       return
     }
     api
@@ -48,7 +48,7 @@ export default function AdminDashboard() {
       .then(() => setAuthed(true))
       .catch(() => {
         clearToken()
-        navigate('/admin')
+        navigate('/')
       })
   }, [navigate])
 
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
           className="btn-ghost"
           onClick={() => {
             clearToken()
-            navigate('/admin')
+            navigate('/')
           }}
         >
           Logout
@@ -443,6 +443,8 @@ function UsersTab() {
         <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-400">
           <tr>
             <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">Mobile</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Attempts</th>
             <th className="px-4 py-3 text-right">Actions</th>
@@ -451,7 +453,7 @@ function UsersTab() {
         <tbody className="divide-y divide-slate-100">
           {users.length === 0 && (
             <tr>
-              <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+              <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
                 No users yet.
               </td>
             </tr>
@@ -459,6 +461,8 @@ function UsersTab() {
           {users.map((u) => (
             <tr key={u.id}>
               <td className="px-4 py-3 font-semibold text-slate-800">{u.name}</td>
+              <td className="px-4 py-3 text-slate-600">{u.email || '-'}</td>
+              <td className="px-4 py-3 text-slate-600">{u.mobile || '-'}</td>
               <td className="px-4 py-3">
                 <span
                   className={[

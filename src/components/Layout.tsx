@@ -1,10 +1,38 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { type ReactNode } from 'react'
-import { getStoredUser, clearStoredUser } from '../api'
+import { useEffect, useState, type ReactNode } from 'react'
+import { getStoredUser, clearStoredUser, getToken, clearToken } from '../api'
+import AuthModal from './AuthModal'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
+  const [showAuth, setShowAuth] = useState(false)
+  // Bumped after sign in / sign out so the header re-reads localStorage.
+  const [authVersion, setAuthVersion] = useState(0)
+
+  // Allow any page to open the sign-in popup by dispatching `open-auth`.
+  useEffect(() => {
+    const open = () => setShowAuth(true)
+    window.addEventListener('open-auth', open)
+    return () => window.removeEventListener('open-auth', open)
+  }, [])
+
+  // authVersion is read here so eslint keeps the dependency; it forces re-render.
+  void authVersion
   const user = getStoredUser()
+  const isAdmin = !!getToken()
+
+  function handleAuthed(role: 'admin' | 'user') {
+    setShowAuth(false)
+    setAuthVersion((v) => v + 1)
+    if (role === 'admin') navigate('/admin/dashboard')
+  }
+
+  function signOut() {
+    clearStoredUser()
+    clearToken()
+    setAuthVersion((v) => v + 1)
+    navigate('/')
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -32,29 +60,29 @@ export default function Layout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            {user ? (
+            {isAdmin ? (
+              <div className="flex items-center gap-2">
+                <Link to="/admin/dashboard" className="btn-ghost">
+                  Admin Dashboard
+                </Link>
+                <button className="btn-ghost" onClick={signOut}>
+                  Sign out
+                </button>
+              </div>
+            ) : user ? (
               <div className="flex items-center gap-2">
                 <span className="hidden text-sm text-slate-600 sm:inline">
                   Hi, <b className="text-slate-800">{user.name}</b>
                 </span>
-                <button
-                  className="btn-ghost"
-                  onClick={() => {
-                    clearStoredUser()
-                    navigate('/')
-                  }}
-                >
+                <button className="btn-ghost" onClick={signOut}>
                   Sign out
                 </button>
               </div>
             ) : (
-              <Link to="/login" className="btn-ghost">
+              <button className="btn-primary" onClick={() => setShowAuth(true)}>
                 Sign in
-              </Link>
+              </button>
             )}
-            <Link to="/admin" className="btn-primary">
-              Admin
-            </Link>
           </div>
         </div>
       </header>
@@ -66,6 +94,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           TypeMaster — built for practising English typing, tests, and number drills.
         </div>
       </footer>
+
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuthed={handleAuthed} />}
     </div>
   )
 }

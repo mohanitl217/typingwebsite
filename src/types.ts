@@ -10,6 +10,8 @@ export interface Exercise {
 export interface User {
   id: string
   name: string
+  email?: string
+  mobile?: string
   active: boolean
   createdAt?: string
   attempts?: number
