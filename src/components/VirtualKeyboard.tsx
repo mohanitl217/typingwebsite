@@ -81,7 +81,7 @@ function Key({
         'relative flex h-10 items-center justify-center rounded-md text-xs font-semibold ring-1 transition',
         glyph ? '' : 'capitalize',
         isNext
-          ? 'bg-brand-600 text-white ring-brand-700 shadow-lg shadow-brand-600/40 scale-105'
+          ? 'z-10 scale-110 bg-amber-400 font-extrabold text-slate-900 ring-2 ring-amber-500 animate-key-glow'
           : isActive
             ? `${base} text-slate-800 ring-slate-400 ring-2`
             : `${base} text-slate-700 ring-slate-300/70`,

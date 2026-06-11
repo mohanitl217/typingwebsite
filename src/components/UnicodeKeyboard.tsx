@@ -88,7 +88,7 @@ function Key({ def, layout, isNext }: { def: KeyDef; layout: HindiLayout; isNext
       className={[
         'relative flex h-11 items-center justify-center rounded-md text-xs font-semibold ring-1 transition',
         isNext
-          ? 'bg-brand-600 text-white ring-brand-700 shadow-lg shadow-brand-600/40 scale-105'
+          ? 'z-10 scale-110 bg-amber-400 font-extrabold text-slate-900 ring-2 ring-amber-500 animate-key-glow'
           : `${base} text-slate-700 ring-slate-300/70`,
         def.home && !isNext ? 'ring-2 ring-slate-500' : '',
       ].join(' ')}
