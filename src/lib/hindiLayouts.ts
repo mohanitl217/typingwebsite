@@ -347,14 +347,16 @@ function tailLeadsTo(layout: HindiLayout, tail: string, need: string): boolean {
   return false
 }
 
-/** All (code, shift) key presses applied to `buffer`, with their new buffers. */
+/** All (code, shift) key presses applied to `buffer`, with their new buffers.
+ *  Unshifted presses are listed first so that, when two keys produce the same
+ *  output, the search prefers the simpler (no-Shift) key. */
 function pressAll(
   layout: HindiLayout,
   buffer: string,
 ): Array<{ code: string; shift: boolean; nb: string }> {
   const list: Array<{ code: string; shift: boolean; nb: string }> = []
-  for (const code of Object.keys(layout.keys)) {
-    for (const shift of [false, true]) {
+  for (const shift of [false, true]) {
+    for (const code of Object.keys(layout.keys)) {
       const res = processLayoutKey(layout, buffer, code, shift, false)
       if (!res) continue
       list.push({ code, shift, nb: buffer.slice(0, buffer.length - res.remove) + res.insert })
@@ -397,7 +399,7 @@ export function nextKeyToward(
   }
   const seen = new Set<string>([typed])
   const queue: Node[] = [{ buffer: typed, first: null, depth: 0 }]
-  let result: { first: { code: string; shift: boolean }; len: number } | null = null
+  let result: { first: { code: string; shift: boolean }; len: number; depth: number } | null = null
   let resultDepth = Infinity
   let iter = 0
 
@@ -410,11 +412,23 @@ export function nextKeyToward(
       if (nb.slice(0, startMatch) !== committed) continue
 
       if (target.startsWith(nb) && nb.length > startMatch) {
-        // Correct forward progress. Prefer the shortest path; on a tie prefer the
-        // press that advances the most (so whole conjuncts win over single keys).
+        // Correct forward progress. Preference order:
+        //   1) shortest keystroke path,
+        //   2) a next key that needs NO Shift (when two keys produce the same
+        //      output, e.g. the ा-matra sits on both `k` and Shift+`a` — always
+        //      suggest the simpler unshifted `k`),
+        //   3) the press that advances the most (whole conjuncts beat singles).
         const depth = node.depth + 1
-        if (depth < resultDepth || (depth === resultDepth && (!result || nb.length > result.len))) {
-          result = { first, len: nb.length }
+        const cand = { first, len: nb.length, depth }
+        const better =
+          !result ||
+          cand.depth < result.depth ||
+          (cand.depth === result.depth && !cand.first.shift && result.first.shift) ||
+          (cand.depth === result.depth &&
+            cand.first.shift === result.first.shift &&
+            cand.len > result.len)
+        if (better) {
+          result = cand
           resultDepth = depth
         }
         continue
@@ -453,7 +467,15 @@ export function findKeyForNext(
     ]
     for (const [out, shift] of candidates) {
       if (out && remaining.startsWith(out)) {
-        if (!best || out.length > best.len) best = { code, shift, len: out.length }
+        // Longest match wins; on a tie prefer the key that needs NO Shift (e.g.
+        // the ा-matra is on both `k` and Shift+`a` — suggest the unshifted `k`).
+        if (
+          !best ||
+          out.length > best.len ||
+          (out.length === best.len && best.shift && !shift)
+        ) {
+          best = { code, shift, len: out.length }
+        }
       }
     }
   }
