@@ -69,6 +69,25 @@ export function isConsonant(ch: string | undefined): boolean {
   return (c >= 0x0915 && c <= 0x0939) || (c >= 0x0958 && c <= 0x095f)
 }
 
+/**
+ * True if `s` is a single dependent vowel sign (matra) other than the आ-matra
+ * `ा`, or one of the combining marks anusvara/visarga/candrabindu. These are the
+ * signs that, when typed right after a Remington half consonant, drop the virama
+ * and attach to the now-full consonant (e.g. श् + ु → शु). The आ-matra is handled
+ * separately (it acts as the inherent-vowel completer, giving the bare full
+ * consonant), and the virama itself (U+094D) is intentionally excluded.
+ */
+export function isMatra(s: string | undefined): boolean {
+  if (!s || s.length !== 1) return false
+  const c = s.charCodeAt(0)
+  return (
+    (c >= 0x093f && c <= 0x094c) || // ि ी ु ू ृ ॄ ॅ ॆ े ै ॉ ॊ ो ौ
+    c === 0x0901 || // ँ
+    c === 0x0902 || // ं
+    c === 0x0903 // ः
+  )
+}
+
 /* -------------------------------------------------------------------------- */
 /* Remington GAIL                                                             */
 /* -------------------------------------------------------------------------- */
@@ -98,21 +117,21 @@ const remingtonGailKeys: Record<string, LayoutKey> = {
   KeyI: { def: '\u092A', shift: '\u092A' + V }, // प / प्
   KeyO: { def: '\u0935', shift: '\u0935' + V }, // व / व्
   KeyP: { def: '\u091A', shift: '\u091A' + V }, // च / च्
-  BracketLeft: { def: '\u0916', shift: '\u0915\u094D\u0937' }, // ख / क्ष
+  BracketLeft: { def: '\u0916' + V, shift: '\u0915\u094D\u0937' }, // ख् / क्ष
   BracketRight: { def: ',', shift: '\u0926\u094D\u0935' }, // , / द्व
   Backslash: { def: '(', shift: ')' },
 
   KeyA: { def: '\u0902', shift: '\u093E' }, // ं / ा
   KeyS: { def: '\u0947', shift: '\u0948' }, // े / ै
   KeyD: { def: '\u0915', shift: '\u0915' + V }, // क / क्
-  KeyF: { def: '\u093F', shift: '\u0925' }, // ि / थ
+  KeyF: { def: '\u093F', shift: '\u0925' + V }, // ि / थ्
   KeyG: { def: '\u0939', shift: '\u0933' }, // ह / ळ
-  KeyH: { def: '\u0940', shift: '\u092D' }, // ी / भ
+  KeyH: { def: '\u0940', shift: '\u092D' + V }, // ी / भ्
   KeyJ: { def: '\u0930', shift: '\u0936\u094D\u0930' }, // र / श्र
   KeyK: { def: '\u093E', shift: '\u091C\u094D\u091E' }, // ा / ज्ञ
   KeyL: { def: '\u0938', shift: '\u0938' + V }, // स / स्
   Semicolon: { def: '\u092F', shift: '\u0930\u0942' }, // य / रू
-  Quote: { def: '\u0936', shift: '\u0937' }, // श / ष
+  Quote: { def: '\u0936' + V, shift: '\u0937' }, // श् / ष
 
   KeyZ: { def: V + '\u0930', shift: '\u0930' + V }, // ्र (rakar) / र् (reph)
   KeyX: { def: '\u0917', shift: '\u0917' + V }, // ग / ग्
@@ -123,7 +142,7 @@ const remingtonGailKeys: Record<string, LayoutKey> = {
   KeyM: { def: '\u0909', shift: '\u0921' }, // उ / ड
   Comma: { def: '\u090F', shift: '\u0922' }, // ए / ढ
   Period: { def: '\u0923' + V, shift: '\u091D' }, // ण् / झ
-  Slash: { def: '\u0927', shift: '\u0918' }, // ध / घ
+  Slash: { def: '\u0927' + V, shift: '\u0918' + V }, // ध् / घ्
   Space: { def: ' ' },
 }
 
@@ -297,14 +316,19 @@ export function processLayoutKey(
   const base = rawKeyOutput(layout, code, shift, altgr)
   if (base == null) return null
 
-  // Remington: half-consonant + आ-matra key → full consonant (drop virama).
+  // Remington half-consonant model: these layouts emit certain consonants as
+  // their half form (consonant + virama). The next vowel "completes" them:
+  //   • the ा / inherent-vowel key drops the virama, leaving the bare full
+  //     consonant with its inherent 'a'  (e.g. ध् + ा-key → ध);
+  //   • any other matra drops the virama and attaches            (श् + ु → शु);
+  //   • another consonant keeps the virama, forming a conjunct   (भ् + य → भ्य).
   if (
     layout.dropViramaOnAA &&
-    base === '\u093E' &&
     typed.endsWith(V) &&
     isConsonant(typed[typed.length - 2])
   ) {
-    return { remove: 1, insert: '' }
+    if (base === '\u093E') return { remove: 1, insert: '' }
+    if (isMatra(base)) return { remove: 1, insert: base }
   }
 
   // Contextual combining (independent vowels, matras, nukta).
@@ -342,6 +366,19 @@ function tailLeadsTo(layout: HindiLayout, tail: string, need: string): boolean {
     if (need.startsWith(s)) return true
     for (const rule of layout.combines) {
       if (rule.prev === s && !seen.has(rule.out)) stack.push(rule.out)
+    }
+    // Remington: a trailing half consonant (…consonant + virama) can be completed
+    // into the bare full consonant by pressing the ा / inherent-vowel key, so the
+    // search must treat the virama-less form as reachable too (e.g. ध् → ध, which
+    // then begins "धर"). Without this the BFS would prune the half consonant and
+    // never suggest the key that completes it.
+    if (
+      layout.dropViramaOnAA &&
+      s.endsWith(V) &&
+      isConsonant(s[s.length - 2]) &&
+      !seen.has(s.slice(0, -1))
+    ) {
+      stack.push(s.slice(0, -1))
     }
   }
   return false
@@ -411,8 +448,12 @@ export function nextKeyToward(
       // Never disturb the part of the text already typed correctly.
       if (nb.slice(0, startMatch) !== committed) continue
 
-      if (target.startsWith(nb) && nb.length > startMatch) {
-        // Correct forward progress. Preference order:
+      if (target.startsWith(nb) && (nb.length > startMatch || nb === target)) {
+        // Correct forward progress (or exact completion). The `nb === target`
+        // case also covers Remington word-final half consonants: the buffer
+        // briefly overshoots (e.g. "ईख्") and the inherent-vowel key trims the
+        // trailing virama back to the exact target ("ईख") without adding length.
+        // Preference order:
         //   1) shortest keystroke path,
         //   2) a next key that needs NO Shift (when two keys produce the same
         //      output, e.g. the ा-matra sits on both `k` and Shift+`a` — always
