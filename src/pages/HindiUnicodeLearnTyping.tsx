@@ -4,7 +4,7 @@ import { mangalLessons, getMangalLesson } from '../data/mangalLessons'
 import {
   getHindiLayout,
   hindiLayouts,
-  findKeyForNext,
+  nextKeyToward,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -85,8 +85,7 @@ export default function HindiUnicodeLearnTyping() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isDone, session.finishedAt])
 
-  const remaining = target.slice(session.typed.length)
-  const nextKey = findKeyForNext(layout, remaining)
+  const nextKey = nextKeyToward(layout, session.typed, target)
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
