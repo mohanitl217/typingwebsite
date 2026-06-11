@@ -98,21 +98,21 @@ const remingtonGailKeys: Record<string, LayoutKey> = {
   KeyI: { def: '\u092A', shift: '\u092A' + V }, // प / प्
   KeyO: { def: '\u0935', shift: '\u0935' + V }, // व / व्
   KeyP: { def: '\u091A', shift: '\u091A' + V }, // च / च्
-  BracketLeft: { def: '\u0916' + V, shift: '\u0915\u094D\u0937' + V }, // ख् / क्ष्
+  BracketLeft: { def: '\u0916', shift: '\u0915\u094D\u0937' }, // ख / क्ष
   BracketRight: { def: ',', shift: '\u0926\u094D\u0935' }, // , / द्व
   Backslash: { def: '(', shift: ')' },
 
   KeyA: { def: '\u0902', shift: '\u093E' }, // ं / ा
   KeyS: { def: '\u0947', shift: '\u0948' }, // े / ै
   KeyD: { def: '\u0915', shift: '\u0915' + V }, // क / क्
-  KeyF: { def: '\u093F', shift: '\u0925' + V }, // ि / थ्
+  KeyF: { def: '\u093F', shift: '\u0925' }, // ि / थ
   KeyG: { def: '\u0939', shift: '\u0933' }, // ह / ळ
-  KeyH: { def: '\u0940', shift: '\u092D' + V }, // ी / भ्
+  KeyH: { def: '\u0940', shift: '\u092D' }, // ी / भ
   KeyJ: { def: '\u0930', shift: '\u0936\u094D\u0930' }, // र / श्र
   KeyK: { def: '\u093E', shift: '\u091C\u094D\u091E' }, // ा / ज्ञ
   KeyL: { def: '\u0938', shift: '\u0938' + V }, // स / स्
   Semicolon: { def: '\u092F', shift: '\u0930\u0942' }, // य / रू
-  Quote: { def: '\u0936' + V, shift: '\u0937' + V }, // श् / ष्
+  Quote: { def: '\u0936', shift: '\u0937' }, // श / ष
 
   KeyZ: { def: V + '\u0930', shift: '\u0930' + V }, // ्र (rakar) / र् (reph)
   KeyX: { def: '\u0917', shift: '\u0917' + V }, // ग / ग्
@@ -123,7 +123,7 @@ const remingtonGailKeys: Record<string, LayoutKey> = {
   KeyM: { def: '\u0909', shift: '\u0921' }, // उ / ड
   Comma: { def: '\u090F', shift: '\u0922' }, // ए / ढ
   Period: { def: '\u0923' + V, shift: '\u091D' }, // ण् / झ
-  Slash: { def: '\u0927' + V, shift: '?' }, // ध् / ?
+  Slash: { def: '\u0927', shift: '\u0918' }, // ध / घ
   Space: { def: ' ' },
 }
 
@@ -145,17 +145,17 @@ const remingtonGailCombines: CombineRule[] = [
   { prev: '\u0964', trigger: '\u0964', out: '\u0965' }, // । + । → ॥
   { prev: '\u0943', trigger: '\u0943', out: '\u0944' }, // ृ + ृ → ॄ
   // nukta consonants
-  { prev: '\u0928', trigger: '\u093C', out: '\u0929' }, // ऩ
-  { prev: '\u0930', trigger: '\u093C', out: '\u0931' }, // ऱ
-  { prev: '\u0933', trigger: '\u093C', out: '\u0934' }, // ऴ
-  { prev: '\u0915', trigger: '\u093C', out: '\u0958' }, // क़
-  { prev: '\u0916', trigger: '\u093C', out: '\u0959' }, // ख़
-  { prev: '\u0917', trigger: '\u093C', out: '\u095A' }, // ग़
-  { prev: '\u091C', trigger: '\u093C', out: '\u095B' }, // ज़
-  { prev: '\u0921', trigger: '\u093C', out: '\u095C' }, // ड़
-  { prev: '\u0922', trigger: '\u093C', out: '\u095D' }, // ढ़
-  { prev: '\u092B', trigger: '\u093C', out: '\u095E' }, // फ़
-  { prev: '\u092F', trigger: '\u093C', out: '\u095F' }, // य़
+  { prev: '\u0928', trigger: '\u093C', out: '\u0928\u093C' }, // ऩ
+  { prev: '\u0930', trigger: '\u093C', out: '\u0930\u093C' }, // ऱ
+  { prev: '\u0933', trigger: '\u093C', out: '\u0933\u093C' }, // ऴ
+  { prev: '\u0915', trigger: '\u093C', out: '\u0915\u093C' }, // क़
+  { prev: '\u0916', trigger: '\u093C', out: '\u0916\u093C' }, // ख़
+  { prev: '\u0917', trigger: '\u093C', out: '\u0917\u093C' }, // ग़
+  { prev: '\u091C', trigger: '\u093C', out: '\u091C\u093C' }, // ज़
+  { prev: '\u0921', trigger: '\u093C', out: '\u0921\u093C' }, // ड़
+  { prev: '\u0922', trigger: '\u093C', out: '\u0922\u093C' }, // ढ़
+  { prev: '\u092B', trigger: '\u093C', out: '\u092B\u093C' }, // फ़
+  { prev: '\u092F', trigger: '\u093C', out: '\u092F\u093C' }, // य़
 ]
 
 /* -------------------------------------------------------------------------- */
