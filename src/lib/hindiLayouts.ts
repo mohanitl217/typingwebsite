@@ -123,7 +123,7 @@ const remingtonGailKeys: Record<string, LayoutKey> = {
   KeyM: { def: '\u0909', shift: '\u0921' }, // उ / ड
   Comma: { def: '\u090F', shift: '\u0922' }, // ए / ढ
   Period: { def: '\u0923' + V, shift: '\u091D' }, // ण् / झ
-  Slash: { def: '\u0927' + V, shift: '?' }, // ध् / ?
+  Slash: { def: '\u0927', shift: '?' }, // ध / ?
   Space: { def: ' ' },
 }
 
