@@ -43,12 +43,22 @@ export default {
           '50%': { transform: 'scale(1)', opacity: '1' },
           '100%': { transform: 'scale(0.95)', opacity: '0.6' },
         },
+        // Pulsing amber glow used to mark the exact key to press next.
+        'key-glow': {
+          '0%, 100%': {
+            boxShadow: '0 4px 14px rgba(245,158,11,0.45), 0 0 0 0 rgba(245,158,11,0.55)',
+          },
+          '50%': {
+            boxShadow: '0 4px 14px rgba(245,158,11,0.45), 0 0 0 8px rgba(245,158,11,0)',
+          },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.3s ease-out',
         'fade-up': 'fade-up 0.6s ease-out both',
         float: 'float 5s ease-in-out infinite',
         'pulse-ring': 'pulse-ring 2.4s ease-in-out infinite',
+        'key-glow': 'key-glow 1.3s ease-in-out infinite',
       },
     },
   },
