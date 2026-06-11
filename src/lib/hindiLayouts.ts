@@ -343,6 +343,14 @@ function tailLeadsTo(layout: HindiLayout, tail: string, need: string): boolean {
     for (const rule of layout.combines) {
       if (rule.prev === s && !seen.has(rule.out)) stack.push(rule.out)
     }
+    // Remington virama-drop: a half consonant (…C्) becomes the full consonant
+    // (…C) when the ा-matra key is pressed. Several consonants only exist on the
+    // keyboard in half form (e.g. ध् on Slash, ख् on '['), so the full letter is
+    // produced via this transition — the pruner must follow it too.
+    if (layout.dropViramaOnAA && s.endsWith(V) && isConsonant(s[s.length - 2])) {
+      const dropped = s.slice(0, -1)
+      if (!seen.has(dropped)) stack.push(dropped)
+    }
   }
   return false
 }
@@ -411,7 +419,7 @@ export function nextKeyToward(
       // Never disturb the part of the text already typed correctly.
       if (nb.slice(0, startMatch) !== committed) continue
 
-      if (target.startsWith(nb) && nb.length > startMatch) {
+      if (target.startsWith(nb) && (nb.length > startMatch || nb === target)) {
         // Correct forward progress. Preference order:
         //   1) shortest keystroke path,
         //   2) a next key that needs NO Shift (when two keys produce the same
