@@ -317,6 +317,138 @@ export function processLayoutKey(
   return { remove: 0, insert: base }
 }
 
+/** Length of the common prefix of two strings. */
+function commonPrefixLen(a: string, b: string): number {
+  const n = Math.min(a.length, b.length)
+  let i = 0
+  while (i < n && a[i] === b[i]) i++
+  return i
+}
+
+/**
+ * Can the still-uncommitted buffer suffix `tail` evolve — purely through the
+ * layout's contextual combine rules — into something that begins the target
+ * text we still need (`need`)? Used to prune the keystroke search so we only
+ * explore combine-relevant key presses (e.g. अ → आ → ओ).
+ */
+function tailLeadsTo(layout: HindiLayout, tail: string, need: string): boolean {
+  if (tail === '') return true
+  const seen = new Set<string>()
+  const stack = [tail]
+  while (stack.length) {
+    const s = stack.pop()!
+    if (seen.has(s)) continue
+    seen.add(s)
+    if (need.startsWith(s)) return true
+    for (const rule of layout.combines) {
+      if (rule.prev === s && !seen.has(rule.out)) stack.push(rule.out)
+    }
+  }
+  return false
+}
+
+/** All (code, shift) key presses applied to `buffer`, with their new buffers.
+ *  Unshifted presses are listed first so that, when two keys produce the same
+ *  output, the search prefers the simpler (no-Shift) key. */
+function pressAll(
+  layout: HindiLayout,
+  buffer: string,
+): Array<{ code: string; shift: boolean; nb: string }> {
+  const list: Array<{ code: string; shift: boolean; nb: string }> = []
+  for (const shift of [false, true]) {
+    for (const code of Object.keys(layout.keys)) {
+      const res = processLayoutKey(layout, buffer, code, shift, false)
+      if (!res) continue
+      list.push({ code, shift, nb: buffer.slice(0, buffer.length - res.remove) + res.insert })
+    }
+  }
+  return list
+}
+
+/**
+ * Suggest the next physical key (and Shift) the learner should press, given the
+ * text they have typed so far and the full target.
+ *
+ * This simulates the layout's actual input-method engine instead of naively
+ * prefix-matching key outputs against the remaining text. That matters for:
+ *  - matras / independent vowels built from combine rules (e.g. आ = अ + ा,
+ *    ओ = अ + ा + े, ो = ा + े) where the FIRST key to press is the start of the
+ *    sequence, not the final matra; and
+ *  - half consonants / conjuncts, which are matched as whole keystrokes.
+ */
+export function nextKeyToward(
+  layout: HindiLayout,
+  typed: string,
+  target: string,
+): { code: string; shift: boolean } | null {
+  if (!target || typed === target) return null
+  const startMatch = commonPrefixLen(typed, target)
+  const committed = target.slice(0, startMatch)
+  const need = target.slice(startMatch)
+
+  // Breadth-first search over key presses. We look for the shortest keystroke
+  // sequence that turns the current buffer into a strictly LONGER correct prefix
+  // of `target`. Every accepted state must itself be a prefix of `target` (so a
+  // key never "overshoots" by inserting an unwanted conjunct), while in-progress
+  // combine states (e.g. क + ा before pressing े to get को) are allowed to pass
+  // through as long as they can still reach the needed text.
+  interface Node {
+    buffer: string
+    first: { code: string; shift: boolean } | null
+    depth: number
+  }
+  const seen = new Set<string>([typed])
+  const queue: Node[] = [{ buffer: typed, first: null, depth: 0 }]
+  let result: { first: { code: string; shift: boolean }; len: number; depth: number } | null = null
+  let resultDepth = Infinity
+  let iter = 0
+
+  while (queue.length && iter++ < 8000) {
+    const node = queue.shift()!
+    if (node.depth >= resultDepth) continue
+    for (const { code, shift, nb } of pressAll(layout, node.buffer)) {
+      const first = node.first ?? { code, shift }
+      // Never disturb the part of the text already typed correctly.
+      if (nb.slice(0, startMatch) !== committed) continue
+
+      if (target.startsWith(nb) && nb.length > startMatch) {
+        // Correct forward progress. Preference order:
+        //   1) shortest keystroke path,
+        //   2) a next key that needs NO Shift (when two keys produce the same
+        //      output, e.g. the ा-matra sits on both `k` and Shift+`a` — always
+        //      suggest the simpler unshifted `k`),
+        //   3) the press that advances the most (whole conjuncts beat singles).
+        const depth = node.depth + 1
+        const cand = { first, len: nb.length, depth }
+        const better =
+          !result ||
+          cand.depth < result.depth ||
+          (cand.depth === result.depth && !cand.first.shift && result.first.shift) ||
+          (cand.depth === result.depth &&
+            cand.first.shift === result.first.shift &&
+            cand.len > result.len)
+        if (better) {
+          result = cand
+          resultDepth = depth
+        }
+        continue
+      }
+
+      // In-progress combine excursion — keep it only if it can still get us there.
+      if (seen.has(nb)) continue
+      if (nb.length > target.length + 4) continue
+      if (!tailLeadsTo(layout, nb.slice(startMatch), need)) continue
+      seen.add(nb)
+      queue.push({ buffer: nb, first, depth: node.depth + 1 })
+    }
+  }
+
+  if (result) return result.first
+
+  // Fallback: longest direct prefix match on the remaining text.
+  return findKeyForNext(layout, need)
+}
+
 /**
  * For the on-screen keyboard / finger guidance: find which physical key (and
  * whether Shift is needed) produces the start of `remaining`. Returns the
@@ -335,7 +467,15 @@ export function findKeyForNext(
     ]
     for (const [out, shift] of candidates) {
       if (out && remaining.startsWith(out)) {
-        if (!best || out.length > best.len) best = { code, shift, len: out.length }
+        // Longest match wins; on a tie prefer the key that needs NO Shift (e.g.
+        // the ा-matra is on both `k` and Shift+`a` — suggest the unshifted `k`).
+        if (
+          !best ||
+          out.length > best.len ||
+          (out.length === best.len && best.shift && !shift)
+        ) {
+          best = { code, shift, len: out.length }
+        }
       }
     }
   }
