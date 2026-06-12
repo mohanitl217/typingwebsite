@@ -7,7 +7,7 @@ import {
   nextKeyToward,
   typingCursorIndex,
   floatedMatraIndex,
-  displayOrder,
+  buildTypingStrip,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -91,7 +91,10 @@ export default function HindiUnicodeLearnTyping() {
   const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra)
   const cursorIndex = typingCursorIndex(layout, session.typed, target, pendingMatra)
   const floatedIndex = pendingMatra ? floatedMatraIndex(layout, session.typed, target) : null
-  const cellOrder = useMemo(() => displayOrder(layout, target), [layout, target])
+  const strip = useMemo(
+    () => buildTypingStrip(layout, target, session.typed, pendingMatra),
+    [layout, target, session.typed, pendingMatra],
+  )
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
@@ -225,10 +228,8 @@ export default function HindiUnicodeLearnTyping() {
                   fontFamily={MANGAL_FONT}
                   onKeyDown={onKeyDown}
                   inputRef={surfaceRef}
-                  cursorIndex={cursorIndex}
-                  floatedIndex={floatedIndex}
                   flash={flash}
-                  order={cellOrder}
+                  segments={strip}
                 />
               ) : (
                 <TypingText

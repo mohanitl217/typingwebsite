@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import type React from 'react'
+import type { StripSegment } from '../lib/hindiLayouts'
 
 interface Props {
   target: string
@@ -28,6 +29,28 @@ interface Props {
    * natural order [0, 1, 2, …].
    */
   order?: number[]
+  /**
+   * Pre-built strip cells. When provided, the strip renders these instead of
+   * one cell per codepoint: completed/upcoming aksharas show as combined
+   * ligatures (e.g. जी) and only the akshara being typed is split into its
+   * keystroke components. (Used for the Unicode Devanagari layouts.)
+   */
+  segments?: StripSegment[]
+}
+
+const SEGMENT_CLASS: Record<StripSegment['status'], string> = {
+  done: 'text-emerald-600',
+  wrong: 'rounded bg-rose-200 text-rose-700',
+  current: 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900',
+  floated: 'rounded bg-amber-100 text-amber-700 ring-1 ring-amber-300',
+  upcoming: 'text-slate-400',
+}
+
+function renderText(text: string): string {
+  if (text === ' ') return '\u00A0'
+  if (text === '\n') return '\u21B5'
+  if (text === '\t') return '\u2192'
+  return text
 }
 
 /**
@@ -48,6 +71,7 @@ export default function LineTyping({
   floatedIndex = null,
   flash = false,
   order,
+  segments,
 }: Props) {
   const localRef = useRef<HTMLDivElement>(null)
   const containerRef = inputRef ?? localRef
@@ -66,7 +90,7 @@ export default function LineTyping({
     const cursor = cursorRef.current
     const cursorLeft = cursor ? cursor.offsetLeft : strip.scrollWidth
     strip.style.transform = `translate(${-(cursorLeft - anchor)}px, -50%)`
-  }, [cur, pos, target, fontSize, containerRef])
+  }, [cur, pos, target, fontSize, containerRef, segments])
 
   // Autofocus so the user can start typing immediately.
   useEffect(() => {
@@ -93,33 +117,50 @@ export default function LineTyping({
             lineHeight: 1,
           }}
         >
-          {(order ?? target.split('').map((_, i) => i)).map((oi, k) => {
-            const ch = target[oi]
-            const typedCh = typed[oi]
-            const isTyped = oi < pos
-            const isCurrent = oi === cur
-            const isFloated = oi === floatedIndex
-            const correct = typedCh === ch
+          {segments
+            ? segments.map((seg, k) => {
+                const isCurrent = seg.status === 'current'
+                const cls =
+                  isCurrent && flash
+                    ? 'rounded border-2 border-rose-500 bg-rose-100 text-rose-700'
+                    : SEGMENT_CLASS[seg.status]
+                return (
+                  <span
+                    key={k}
+                    ref={seg.anchor ? cursorRef : undefined}
+                    className={`inline-block px-1 ${cls}`}
+                  >
+                    {renderText(seg.text)}
+                  </span>
+                )
+              })
+            : (order ?? target.split('').map((_, i) => i)).map((oi, k) => {
+                const ch = target[oi]
+                const typedCh = typed[oi]
+                const isTyped = oi < pos
+                const isCurrent = oi === cur
+                const isFloated = oi === floatedIndex
+                const correct = typedCh === ch
 
-            let cls = 'text-indigo-700'
-            if (isTyped) cls = correct ? 'text-emerald-600' : 'rounded bg-rose-200 text-rose-700'
-            if (isFloated) cls = 'rounded bg-amber-100 text-amber-700 ring-1 ring-amber-300'
-            if (isCurrent) {
-              cls = flash
-                ? 'rounded border-2 border-rose-500 bg-rose-100 text-rose-700'
-                : 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900'
-            }
+                let cls = 'text-indigo-700'
+                if (isTyped) cls = correct ? 'text-emerald-600' : 'rounded bg-rose-200 text-rose-700'
+                if (isFloated) cls = 'rounded bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+                if (isCurrent) {
+                  cls = flash
+                    ? 'rounded border-2 border-rose-500 bg-rose-100 text-rose-700'
+                    : 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900'
+                }
 
-            return (
-              <span
-                key={k}
-                ref={isCurrent ? cursorRef : undefined}
-                className={`inline-block px-1 ${cls}`}
-              >
-                {ch === ' ' ? '\u00A0' : ch === '\n' ? '\u21B5' : ch}
-              </span>
-            )
-          })}
+                return (
+                  <span
+                    key={k}
+                    ref={isCurrent ? cursorRef : undefined}
+                    className={`inline-block px-1 ${cls}`}
+                  >
+                    {renderText(ch)}
+                  </span>
+                )
+              })}
           {pos >= target.length && target.length > 0 && (
             <span className="inline-block px-2 text-emerald-600">✓</span>
           )}

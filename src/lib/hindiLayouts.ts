@@ -441,6 +441,140 @@ export function displayOrder(layout: HindiLayout, target: string): number[] {
   return order
 }
 
+/* -------------------------------------------------------------------------- */
+/* Image-style strip segmentation                                             */
+/* -------------------------------------------------------------------------- */
+
+/** A Devanagari combining mark (matra, virama, nukta, anusvara/visarga, etc.). */
+function isDevCombining(ch: string): boolean {
+  const c = ch.charCodeAt(0)
+  return (
+    (c >= 0x0900 && c <= 0x0903) ||
+    c === 0x093c ||
+    (c >= 0x093e && c <= 0x094f) ||
+    (c >= 0x0951 && c <= 0x0957) ||
+    c === 0x0962 ||
+    c === 0x0963
+  )
+}
+
+/** A dependent vowel sign / anusvara-class mark that is typed as its OWN key
+ *  AFTER the consonant (so it can be split out as a separate cell). The virama
+ *  and nukta are excluded — they belong to the consonant (half forms / नुक्ता). */
+function isMatraOrSign(ch: string): boolean {
+  const c = ch.charCodeAt(0)
+  return (
+    (c >= 0x093e && c <= 0x094c) || // vowel signs ा ि ी ु … ौ (not virama 094D)
+    (c >= 0x0900 && c <= 0x0903) || // ँ ं ः
+    (c >= 0x0951 && c <= 0x0957) ||
+    c === 0x0962 ||
+    c === 0x0963
+  )
+}
+
+/**
+ * Split the target into orthographic clusters (aksharas): a base letter plus
+ * its following matras / virama-joined consonants / signs. Non-Devanagari
+ * characters (space, punctuation, digits) are their own single-character
+ * clusters. Returns an array of clusters, each a list of target indices.
+ */
+export function splitAksharas(target: string): number[][] {
+  const groups: number[][] = []
+  let cur: number[] = []
+  for (let i = 0; i < target.length; i++) {
+    if (cur.length === 0) {
+      cur = [i]
+      continue
+    }
+    const prev = target.charCodeAt(i - 1)
+    if (isDevCombining(target[i]) || prev === 0x094d) {
+      cur.push(i) // a sign attaches, or a consonant after virama continues a conjunct
+    } else {
+      groups.push(cur)
+      cur = [i]
+    }
+  }
+  if (cur.length) groups.push(cur)
+  return groups
+}
+
+export interface StripSegment {
+  /** text to render in the cell (a whole cluster, or one component while typing) */
+  text: string
+  status: 'done' | 'wrong' | 'current' | 'floated' | 'upcoming'
+  /** scroll anchor (the active cell) */
+  anchor?: boolean
+}
+
+/**
+ * Build the cells for the image-style typing strip. Completed and upcoming
+ * aksharas render as a single COMBINED cell (so जी shows the real ligature, not
+ * ज + ◌ी). The akshara currently being typed is SPLIT into its typing units —
+ * the consonant cluster and each following matra/sign as separate cells — so the
+ * learner can see the steps. On Remington layouts the short-i matra ि is keyed
+ * first, so within the current akshara it is shown before its consonant.
+ */
+export function buildTypingStrip(
+  layout: HindiLayout,
+  target: string,
+  typed: string,
+  pending: boolean,
+): StripSegment[] {
+  const pos = typed.length
+  const cur = typingCursorIndex(layout, typed, target, pending)
+  const floated = pending ? floatedMatraIndex(layout, typed, target) : null
+  const segs: StripSegment[] = []
+
+  const rangeText = (idxs: number[]) => target.slice(idxs[0], idxs[idxs.length - 1] + 1)
+  const statusFor = (idxs: number[]): StripSegment['status'] => {
+    if (idxs.some((k) => k === cur)) return 'current'
+    if (idxs.some((k) => k === floated)) return 'floated'
+    if (idxs.every((k) => k < pos)) {
+      return idxs.every((k) => typed[k] === target[k]) ? 'done' : 'wrong'
+    }
+    return 'upcoming'
+  }
+
+  for (const g of splitAksharas(target)) {
+    const start = g[0]
+    const end = g[g.length - 1]
+
+    if (pos > end || pos < start) {
+      // Fully typed or fully upcoming → one combined cell (real ligature).
+      const correct = g.every((k) => typed[k] === target[k])
+      segs.push({
+        text: rangeText(g),
+        status: pos > end ? (correct ? 'done' : 'wrong') : 'upcoming',
+      })
+      continue
+    }
+
+    // Current akshara → split into typing units: the consonant cluster, then
+    // each matra/sign. The short-i matra is pulled to the front.
+    const baseIdx: number[] = []
+    const signIdx: number[] = []
+    let inSigns = false
+    for (const idx of g) {
+      if (isMatraOrSign(target[idx])) inSigns = true
+      ;(inSigns ? signIdx : baseIdx).push(idx)
+    }
+    const shortIdx = layout.shortIBeforeConsonant
+      ? signIdx.find((idx) => target.charCodeAt(idx) === 0x093f)
+      : undefined
+
+    const units: number[][] = []
+    if (shortIdx !== undefined) units.push([shortIdx])
+    if (baseIdx.length) units.push(baseIdx)
+    for (const idx of signIdx) if (idx !== shortIdx) units.push([idx])
+
+    for (const u of units) {
+      const status = statusFor(u)
+      segs.push({ text: rangeText(u), status, anchor: status === 'current' })
+    }
+  }
+  return segs
+}
+
 /**
  * Can the still-uncommitted buffer suffix `tail` evolve — purely through the
  * layout's contextual combine rules — into something that begins the target
