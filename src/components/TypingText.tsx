@@ -13,6 +13,16 @@ interface Props {
   className?: string
   /** Override the default monospace font (e.g. KrutiDev/DevLys for Hindi). */
   fontFamily?: string
+  /**
+   * Override the "current" cell. Defaults to typed.length. Used by Remington
+   * layouts where the short-i matra ि is keyed BEFORE its consonant, so the
+   * cursor must sit on the ि cell (which comes later in Unicode order).
+   */
+  cursorIndex?: number
+  /** Cell index of a short-i matra that is currently held / floating, or null. */
+  floatedIndex?: number | null
+  /** Brief pulse: render the current cell as wrong (out-of-order keystroke). */
+  flash?: boolean
 }
 
 /** Find the [start,end) range of the word containing index i. */
@@ -34,16 +44,20 @@ export default function TypingText({
   autoScroll,
   className = '',
   fontFamily,
+  cursorIndex,
+  floatedIndex = null,
+  flash = false,
 }: Props) {
   const cursorRef = useRef<HTMLSpanElement | null>(null)
   const pos = typed.length
+  const cur = cursorIndex ?? pos
   const [wStart, wEnd] = useMemo(() => wordRange(target, pos), [target, pos])
 
   useEffect(() => {
     if (autoScroll && cursorRef.current) {
       cursorRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
-  }, [pos, autoScroll])
+  }, [cur, autoScroll])
 
   return (
     <div
@@ -58,7 +72,8 @@ export default function TypingText({
       {target.split('').map((ch, i) => {
         const typedCh = typed[i]
         const isTyped = i < pos
-        const isCurrent = i === pos
+        const isCurrent = i === cur
+        const isFloated = i === floatedIndex
         const correct = typedCh === ch
 
         let cls = 'text-slate-400'
@@ -72,9 +87,12 @@ export default function TypingText({
           if (highlight === 'word-error' && isTyped && !correct) {
             cls = 'bg-rose-300 text-rose-800 rounded'
           }
-          if (isCurrent) cls += ' border-b-2 border-brand-600'
+          if (isFloated && !isTyped) cls = 'bg-amber-100 text-amber-700 rounded ring-1 ring-amber-300'
+          if (isCurrent) {
+            cls += flash ? ' bg-rose-200 text-rose-700 rounded border-b-2 border-rose-500' : ' border-b-2 border-brand-600'
+          }
           if (highlight === 'letter' && isCurrent) {
-            cls = 'bg-brand-600 text-white rounded'
+            cls = flash ? 'bg-rose-500 text-white rounded' : 'bg-brand-600 text-white rounded'
           }
         } else if (isCurrent) {
           cls = 'border-b-2 border-brand-600 text-slate-500'
