@@ -513,6 +513,24 @@ export function nextKeyToward(
 ): { code: string; shift: boolean } | null {
   if (!target || typed === target) return null
 
+  // Guidance must FOLLOW THE CURSOR. With "Move on Error" enabled, a wrong
+  // keystroke is committed into `typed`, so commonPrefixLen() would freeze at
+  // the first mistake and keep suggesting the key for that stale position. To
+  // avoid that, guide from a clean prefix ending at the cursor (typed.length),
+  // which advances even after mistakes. The exception is when the buffer is
+  // genuinely mid-combine — its uncommitted tail is a valid IME intermediate
+  // that can still combine into the target (e.g. अ before pressing ा for आ) —
+  // in which case we keep the real buffer so the combine is suggested.
+  const matched = commonPrefixLen(typed, target)
+  const midCombine =
+    matched < typed.length &&
+    tailLeadsTo(layout, typed.slice(matched), target.slice(matched))
+  const effTyped = midCombine
+    ? typed
+    : target.slice(0, Math.min(typed.length, target.length))
+
+  if (effTyped === target) return null
+
   // Remington: the short-i matra ि is keyed BEFORE its consonant. If the next
   // syllable is <consonant cluster> + ि and that matra has not been pressed yet
   // (pendingShortI === false), point the learner at the ि key first. The BFS
@@ -520,13 +538,13 @@ export function nextKeyToward(
   // the wrong order for this layout. Once ि is held (pendingShortI === true),
   // we fall through so the search guides them to the consonant next.
   if (layout.shortIBeforeConsonant && !pendingShortI) {
-    const sm = commonPrefixLen(typed, target)
+    const sm = commonPrefixLen(effTyped, target)
     if (shortIClusterLen(target.slice(sm)) > 0) {
       return findKeyForNext(layout, SHORT_I)
     }
   }
 
-  const startMatch = commonPrefixLen(typed, target)
+  const startMatch = commonPrefixLen(effTyped, target)
   const committed = target.slice(0, startMatch)
   const need = target.slice(startMatch)
 
@@ -541,8 +559,8 @@ export function nextKeyToward(
     first: { code: string; shift: boolean } | null
     depth: number
   }
-  const seen = new Set<string>([typed])
-  const queue: Node[] = [{ buffer: typed, first: null, depth: 0 }]
+  const seen = new Set<string>([effTyped])
+  const queue: Node[] = [{ buffer: effTyped, first: null, depth: 0 }]
   let result: { first: { code: string; shift: boolean }; len: number; depth: number } | null = null
   let resultDepth = Infinity
   let iter = 0
