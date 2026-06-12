@@ -10,7 +10,7 @@ import {
   nextKeyToward,
   typingCursorIndex,
   floatedMatraIndex,
-  displayOrder,
+  buildTypingStrip,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -120,7 +120,10 @@ export default function RemingtonGailCourse() {
   const floatedIndex = pendingMatra
     ? floatedMatraIndex(REMINGTON_GAIL, session.typed, target)
     : null
-  const cellOrder = useMemo(() => displayOrder(REMINGTON_GAIL, target), [target])
+  const strip = useMemo(
+    () => buildTypingStrip(REMINGTON_GAIL, target, session.typed, pendingMatra),
+    [target, session.typed, pendingMatra],
+  )
 
   function goToExercise(idx: number) {
     if (idx >= 0 && idx < remingtonGailExercises.length) {
@@ -310,10 +313,8 @@ export default function RemingtonGailCourse() {
               fontFamily={MANGAL_FONT}
               onKeyDown={onKeyDown}
               inputRef={surfaceRef}
-              cursorIndex={cursorIndex}
-              floatedIndex={floatedIndex}
               flash={flash}
-              order={cellOrder}
+              segments={strip}
             />
           ) : (
             <TypingText
