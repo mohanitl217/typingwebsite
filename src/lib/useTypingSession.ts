@@ -100,6 +100,19 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     setTyped((prev) => (prev.length ? prev.slice(0, -1) : prev))
   }, [finishedAt])
 
+  // Count a wrong keystroke that is intentionally NOT committed to the buffer.
+  // Used by the Remington IME to reject out-of-order input (e.g. pressing the
+  // consonant before its short-i matra): the press is blocked, but it still
+  // registers as a keystroke + error so accuracy reflects the mistake.
+  const markError = useCallback(() => {
+    if (finishedAt) return
+    keystrokesRef.current += 1
+    setKeystrokes(keystrokesRef.current)
+    errorRef.current += 1
+    setErrorCount(errorRef.current)
+    if (!startedAt) setStartedAt((s) => s ?? Date.now())
+  }, [finishedAt, startedAt])
+
   const handleBackspace = useCallback(() => {
     if (finishedAt) return
     if (settings.backspaceMode === 'off') return
@@ -183,5 +196,6 @@ export function useTypingSession(target: string, settings: TypingSettings) {
     reset,
     finish,
     popChar,
+    markError,
   }
 }

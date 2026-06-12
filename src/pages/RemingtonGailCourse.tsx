@@ -8,6 +8,8 @@ import {
   getHindiLayout,
   hindiLayouts,
   nextKeyToward,
+  typingCursorIndex,
+  floatedMatraIndex,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -73,7 +75,7 @@ export default function RemingtonGailCourse() {
   const target = exercise?.text ?? ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const { onKeyDown, pending: pendingMatra } = useHindiLayoutInput(
+  const { onKeyDown, pending: pendingMatra, flash } = useHindiLayoutInput(
     REMINGTON_GAIL,
     session,
     target,
@@ -113,6 +115,10 @@ export default function RemingtonGailCourse() {
   }, [session.isDone, session.finishedAt])
 
   const nextKey = nextKeyToward(REMINGTON_GAIL, session.typed, target, pendingMatra)
+  const cursorIndex = typingCursorIndex(REMINGTON_GAIL, session.typed, target, pendingMatra)
+  const floatedIndex = pendingMatra
+    ? floatedMatraIndex(REMINGTON_GAIL, session.typed, target)
+    : null
 
   function goToExercise(idx: number) {
     if (idx >= 0 && idx < remingtonGailExercises.length) {
@@ -302,6 +308,9 @@ export default function RemingtonGailCourse() {
               fontFamily={MANGAL_FONT}
               onKeyDown={onKeyDown}
               inputRef={surfaceRef}
+              cursorIndex={cursorIndex}
+              floatedIndex={floatedIndex}
+              flash={flash}
             />
           ) : (
             <TypingText
@@ -314,6 +323,9 @@ export default function RemingtonGailCourse() {
               autoScroll={false}
               fontFamily={MANGAL_FONT}
               className="min-h-[110px]"
+              cursorIndex={cursorIndex}
+              floatedIndex={floatedIndex}
+              flash={flash}
             />
           )}
 
@@ -361,7 +373,15 @@ export default function RemingtonGailCourse() {
                   {'\u25CC\u093F'}
                 </span>
               )}
-              <span className="animate-pulse text-brand-400">▎</span>
+              <span
+                className={
+                  flash
+                    ? 'rounded bg-rose-500/40 px-0.5 text-rose-200'
+                    : 'animate-pulse text-brand-400'
+                }
+              >
+                ▎
+              </span>
             </div>
           )}
 

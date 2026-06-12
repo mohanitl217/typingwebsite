@@ -361,16 +361,54 @@ function commonPrefixLen(a: string, b: string): number {
 }
 
 /**
- * True if `s` begins with a consonant cluster (a consonant, optionally extended
- * by virama-joined consonants) immediately followed by the short-i matra ि.
- * On Remington layouts that matra is keyed BEFORE its consonant, so when such a
- * syllable is the next thing to type we point the learner at the ि key first.
+ * Length of the consonant cluster at the start of `s` IF that cluster is
+ * immediately followed by the short-i matra ि, otherwise 0. A cluster is a
+ * consonant, optionally extended by further virama-joined consonants
+ * (e.g. क, क्ष, श्र). On Remington layouts the short-i matra is keyed BEFORE
+ * this cluster, so a non-zero result marks a "matra-first" syllable.
  */
-function startsWithConsonantThenShortI(s: string): boolean {
-  if (!isConsonant(s[0])) return false
+export function shortIClusterLen(s: string): number {
+  if (!isConsonant(s[0])) return 0
   let i = 1
   while (s[i] === V && isConsonant(s[i + 1])) i += 2
-  return s[i] === SHORT_I
+  return s[i] === SHORT_I ? i : 0
+}
+
+/**
+ * The target index the on-screen cursor should sit on, honouring the Remington
+ * rule that the short-i matra ि is keyed BEFORE its consonant cluster:
+ *  - "matra-first" (the ि has not been pressed yet): point at the ि cell, which
+ *    sits just after its consonant cluster in the Unicode text;
+ *  - "pending" (the ि is floating, waiting for its consonant): point back at the
+ *    start of the consonant cluster the learner must type next.
+ * For every other layout / position this is just the end of the typed text.
+ */
+export function typingCursorIndex(
+  layout: HindiLayout,
+  typed: string,
+  target: string,
+  pending: boolean,
+): number {
+  const pos = typed.length
+  if (!layout.shortIBeforeConsonant || pending) return pos
+  const len = shortIClusterLen(target.slice(pos))
+  return len > 0 ? pos + len : pos
+}
+
+/**
+ * Index of the short-i matra ि that is currently "floating" (its key has been
+ * pressed but its consonant has not yet been typed), or null when nothing is
+ * floating. Used to render the held matra while pending.
+ */
+export function floatedMatraIndex(
+  layout: HindiLayout,
+  typed: string,
+  target: string,
+): number | null {
+  if (!layout.shortIBeforeConsonant) return null
+  const pos = typed.length
+  const len = shortIClusterLen(target.slice(pos))
+  return len > 0 ? pos + len : null
 }
 
 /**
@@ -453,7 +491,7 @@ export function nextKeyToward(
   // we fall through so the search guides them to the consonant next.
   if (layout.shortIBeforeConsonant && !pendingShortI) {
     const sm = commonPrefixLen(typed, target)
-    if (startsWithConsonantThenShortI(target.slice(sm))) {
+    if (shortIClusterLen(target.slice(sm)) > 0) {
       return findKeyForNext(layout, SHORT_I)
     }
   }

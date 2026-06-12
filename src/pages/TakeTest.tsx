@@ -156,11 +156,11 @@ export default function TakeTest({
   const session = useTypingSession(target, settings)
 
   // Unicode layout IME handler (used only when `unicodeLayout` is set).
-  const { onKeyDown: layoutKeyDown, pending: pendingMatra } = useHindiLayoutInput(
-    unicodeLayout ?? hindiLayouts[0],
-    session,
-    target,
-  )
+  const {
+    onKeyDown: layoutKeyDown,
+    pending: pendingMatra,
+    flash,
+  } = useHindiLayoutInput(unicodeLayout ?? hindiLayouts[0], session, target)
 
   useEffect(() => {
     session.reset()
@@ -434,7 +434,17 @@ export default function TakeTest({
         {unicodeLayout && pendingMatra && (
           <span className="rounded bg-amber-100 px-0.5 text-amber-700">{'\u25CC\u093F'}</span>
         )}
-        {!session.finishedAt && <span className="animate-pulse text-brand-500">▎</span>}
+        {!session.finishedAt && (
+          <span
+            className={
+              unicodeLayout && flash
+                ? 'rounded bg-rose-200 px-0.5 text-rose-700'
+                : 'animate-pulse text-brand-500'
+            }
+          >
+            ▎
+          </span>
+        )}
       </div>
 
       <div className="flex justify-end gap-2">

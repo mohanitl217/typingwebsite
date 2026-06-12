@@ -12,6 +12,16 @@ interface Props {
   onKeyDown?: (e: React.KeyboardEvent) => void
   /** Focusable element ref (so parent focus() calls still work). */
   inputRef?: React.RefObject<HTMLDivElement>
+  /**
+   * Override the "current" (boxed) cell. Defaults to typed.length. Used by the
+   * Remington layouts where the short-i matra ि is keyed BEFORE its consonant,
+   * so the cursor must sit on the ि cell (which comes later in Unicode order).
+   */
+  cursorIndex?: number
+  /** Cell index of a short-i matra that is currently held / floating, or null. */
+  floatedIndex?: number | null
+  /** Brief pulse: render the current cell as wrong (out-of-order keystroke). */
+  flash?: boolean
 }
 
 /**
@@ -28,12 +38,16 @@ export default function LineTyping({
   fontSize = 46,
   onKeyDown,
   inputRef,
+  cursorIndex,
+  floatedIndex = null,
+  flash = false,
 }: Props) {
   const localRef = useRef<HTMLDivElement>(null)
   const containerRef = inputRef ?? localRef
   const stripRef = useRef<HTMLDivElement>(null)
   const cursorRef = useRef<HTMLSpanElement>(null)
   const pos = typed.length
+  const cur = cursorIndex ?? pos
 
   // Keep the current letter pinned at a fixed horizontal anchor; the strip
   // slides left as you advance (right-to-left scrolling).
@@ -45,7 +59,7 @@ export default function LineTyping({
     const cursor = cursorRef.current
     const cursorLeft = cursor ? cursor.offsetLeft : strip.scrollWidth
     strip.style.transform = `translate(${-(cursorLeft - anchor)}px, -50%)`
-  }, [pos, target, fontSize, containerRef])
+  }, [cur, pos, target, fontSize, containerRef])
 
   // Autofocus so the user can start typing immediately.
   useEffect(() => {
@@ -75,12 +89,18 @@ export default function LineTyping({
           {target.split('').map((ch, i) => {
             const typedCh = typed[i]
             const isTyped = i < pos
-            const isCurrent = i === pos
+            const isCurrent = i === cur
+            const isFloated = i === floatedIndex
             const correct = typedCh === ch
 
             let cls = 'text-indigo-700'
             if (isTyped) cls = correct ? 'text-emerald-600' : 'rounded bg-rose-200 text-rose-700'
-            if (isCurrent) cls = 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900'
+            if (isFloated) cls = 'rounded bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+            if (isCurrent) {
+              cls = flash
+                ? 'rounded border-2 border-rose-500 bg-rose-100 text-rose-700'
+                : 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900'
+            }
 
             return (
               <span

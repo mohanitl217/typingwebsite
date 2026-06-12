@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type React from 'react'
-import { processLayoutKey, rawKeyOutput, isConsonant, type HindiLayout } from './hindiLayouts'
+import {
+  processLayoutKey,
+  rawKeyOutput,
+  isConsonant,
+  shortIClusterLen,
+  type HindiLayout,
+} from './hindiLayouts'
 
 interface LayoutSession {
   typed: string
   handleChar: (ch: string) => void
   popChar: () => void
   handleBackspace: () => void
+  markError: () => void
 }
 
 const MODIFIER_KEYS = new Set([
@@ -33,6 +40,8 @@ export interface HindiLayoutInput {
   onKeyDown: (e: React.KeyboardEvent) => void
   /** a short-i matra has been pressed and is waiting for its consonant */
   pending: boolean
+  /** brief true pulse when a wrong / out-of-order key was rejected */
+  flash: boolean
 }
 
 /**
@@ -42,13 +51,18 @@ export interface HindiLayoutInput {
  * provisional character before inserting the combined one; because the session
  * uses functional state updates these compose correctly within one event.
  *
- * Remington short-i: on layouts where `shortIBeforeConsonant` is set, the short
- * i matra (ि) is keyed BEFORE its consonant (it visually sits to the left). We
- * therefore "float" a pressed ि — nothing is committed yet — and, when the next
- * consonant cluster arrives, emit `<consonant…> + ि` so the buffer stays valid
- * Unicode (e.g. pressing ि then क yields कि, never the broken िक). The returned
- * `pending` flag lets the page move the on-screen key hint onto the consonant
- * once the matra is floating.
+ * Remington short-i ORDER: on layouts where `shortIBeforeConsonant` is set, the
+ * short-i matra (ि) is keyed BEFORE its consonant (it visually sits to the
+ * left). This hook ENFORCES that order against the target:
+ *  - at a "matra-first" position the ि key must be pressed first; it is held
+ *    ("floating") and nothing is committed yet;
+ *  - the next consonant cluster then commits as `<consonant…> + ि`, so the
+ *    stored Unicode stays correct (ि then क → कि, never the broken िक);
+ *  - pressing the consonant (or anything else) before the ि — or pressing ि
+ *    where none is expected — is rejected: it is blocked, counted as an error,
+ *    and `flash` pulses so the surface can show it as wrong.
+ * The returned `pending` flag lets the page move the cursor / key hint onto the
+ * consonant while the matra is floating.
  */
 export function useHindiLayoutInput(
   layout: HindiLayout,
@@ -56,16 +70,29 @@ export function useHindiLayoutInput(
   target: string,
 ): HindiLayoutInput {
   const [pendingShortI, setPendingShortI] = useState(false)
+  const [flash, setFlash] = useState(false)
   // Ref mirror so the (memoised) key handler always reads the latest value.
   const pendingRef = useRef(false)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
   const setPending = useCallback((v: boolean) => {
     pendingRef.current = v
     setPendingShortI(v)
   }, [])
 
-  // Drop any floating matra when the drill text changes / resets.
+  const pulseFlash = useCallback(() => {
+    setFlash(true)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setFlash(false), 300)
+  }, [])
+
+  // Drop any floating matra / flash when the drill text changes or resets.
   useEffect(() => {
     setPending(false)
+    setFlash(false)
+    return () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current)
+    }
   }, [target, setPending])
 
   const onKeyDown = useCallback(
@@ -98,33 +125,53 @@ export function useHindiLayoutInput(
       // --- Remington: the short-i matra ि is typed BEFORE its consonant. ---
       if (layout.shortIBeforeConsonant) {
         const base = rawKeyOutput(layout, e.code, e.shiftKey, altgr)
-
-        // Pressing the ि key floats the matra (nothing is committed yet). A
-        // repeated press while already floating is a no-op.
-        if (base === SHORT_I) {
-          e.preventDefault()
-          setPending(true)
-          return
-        }
+        const matraFirst = shortIClusterLen(target.slice(session.typed.length)) > 0
 
         if (pendingRef.current) {
+          // ि is floating — the consonant cluster it belongs to comes next.
+          if (base === SHORT_I) {
+            e.preventDefault() // a second ि press changes nothing
+            return
+          }
+          if (base == null) return // ignore keys outside the layout
           const res = processLayoutKey(layout, session.typed, e.code, e.shiftKey, altgr)
           if (!res) return
           e.preventDefault()
           if (endsWithFullConsonant(res.insert)) {
             // Attach: emit the consonant cluster, then the held ि after it, so
-            // the stored Unicode is consonant-first (e.g. कि) while the typing
-            // order was ि-first.
+            // the stored Unicode is consonant-first (कि) while typing was ि-first.
             for (let i = 0; i < res.remove; i++) session.popChar()
             for (const ch of res.insert) session.handleChar(ch)
             session.handleChar(SHORT_I)
             setPending(false)
             return
           }
-          // A non-consonant key cancels the floating matra, then applies normally.
-          setPending(false)
-          for (let i = 0; i < res.remove; i++) session.popChar()
-          for (const ch of res.insert) session.handleChar(ch)
+          // Not a consonant: the matra has nothing to attach to — reject it.
+          session.markError()
+          pulseFlash()
+          return
+        }
+
+        if (matraFirst) {
+          // The short-i must be keyed first here.
+          if (base === SHORT_I) {
+            e.preventDefault()
+            setPending(true)
+            return
+          }
+          if (base == null) return // ignore keys outside the layout
+          // Consonant (or anything else) typed before its ि → wrong order.
+          e.preventDefault()
+          session.markError()
+          pulseFlash()
+          return
+        }
+
+        if (base === SHORT_I) {
+          // A short-i where the target does not expect one → wrong.
+          e.preventDefault()
+          session.markError()
+          pulseFlash()
           return
         }
       }
@@ -136,8 +183,11 @@ export function useHindiLayoutInput(
       for (let i = 0; i < res.remove; i++) session.popChar()
       for (const ch of res.insert) session.handleChar(ch)
     },
-    [layout, session, target, setPending],
+    [layout, session, target, setPending, pulseFlash],
   )
 
-  return useMemo(() => ({ onKeyDown, pending: pendingShortI }), [onKeyDown, pendingShortI])
+  return useMemo(
+    () => ({ onKeyDown, pending: pendingShortI, flash }),
+    [onKeyDown, pendingShortI, flash],
+  )
 }

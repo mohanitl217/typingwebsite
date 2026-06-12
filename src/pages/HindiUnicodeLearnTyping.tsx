@@ -5,6 +5,8 @@ import {
   getHindiLayout,
   hindiLayouts,
   nextKeyToward,
+  typingCursorIndex,
+  floatedMatraIndex,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -59,7 +61,7 @@ export default function HindiUnicodeLearnTyping() {
   const target = exercises[exIndex] || ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const { onKeyDown, pending: pendingMatra } = useHindiLayoutInput(layout, session, target)
+  const { onKeyDown, pending: pendingMatra, flash } = useHindiLayoutInput(layout, session, target)
 
   useEffect(() => {
     session.reset()
@@ -86,6 +88,8 @@ export default function HindiUnicodeLearnTyping() {
   }, [session.isDone, session.finishedAt])
 
   const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra)
+  const cursorIndex = typingCursorIndex(layout, session.typed, target, pendingMatra)
+  const floatedIndex = pendingMatra ? floatedMatraIndex(layout, session.typed, target) : null
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
@@ -219,6 +223,9 @@ export default function HindiUnicodeLearnTyping() {
                   fontFamily={MANGAL_FONT}
                   onKeyDown={onKeyDown}
                   inputRef={surfaceRef}
+                  cursorIndex={cursorIndex}
+                  floatedIndex={floatedIndex}
+                  flash={flash}
                 />
               ) : (
                 <TypingText
@@ -231,6 +238,9 @@ export default function HindiUnicodeLearnTyping() {
                   autoScroll={false}
                   fontFamily={MANGAL_FONT}
                   className="min-h-[110px]"
+                  cursorIndex={cursorIndex}
+                  floatedIndex={floatedIndex}
+                  flash={flash}
                 />
               )}
 
@@ -306,7 +316,15 @@ export default function HindiUnicodeLearnTyping() {
                       {'\u25CC\u093F'}
                     </span>
                   )}
-                  <span className="animate-pulse text-brand-400">▎</span>
+                  <span
+                    className={
+                      flash
+                        ? 'rounded bg-rose-500/40 px-0.5 text-rose-200'
+                        : 'animate-pulse text-brand-400'
+                    }
+                  >
+                    ▎
+                  </span>
                 </div>
               )}
 
