@@ -344,7 +344,7 @@ function LayoutBox({ name, slug }: { name: string; slug: string }) {
       <p className="mt-3 text-xs text-slate-400">Real Unicode Devanagari • Mangal font.</p>
       <div className="mt-4 flex gap-2">
         <Link
-          to={`/hindi/mangal/${slug}/learn/mg-vowels`}
+          to={slug === 'remington-gail' ? '/hindi/remington-gail' : `/hindi/mangal/${slug}/learn/mg-vowels`}
           className="flex-1 rounded-lg bg-fuchsia-50 px-3 py-2 text-center text-xs font-semibold text-fuchsia-700 transition hover:bg-fuchsia-100"
         >
           Learn

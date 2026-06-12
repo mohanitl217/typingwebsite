@@ -110,7 +110,11 @@ export default function HindiUnicodeLearnTyping() {
           {hindiLayouts.map((l) => (
             <Link
               key={l.id}
-              to={`/hindi/mangal/${l.slug}/learn/${lesson.id}`}
+              to={
+                l.id === 'remington-gail'
+                  ? '/hindi/remington-gail'
+                  : `/hindi/mangal/${l.slug}/learn/${lesson.id}`
+              }
               className={[
                 'rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition',
                 l.id === layout.id
