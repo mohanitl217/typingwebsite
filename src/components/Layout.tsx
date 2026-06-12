@@ -17,7 +17,7 @@ const HINDI = [
     desc: 'Legacy Devanagari fonts',
   },
   {
-    to: '/hindi/mangal/remington-gail/learn/mg-vowels',
+    to: '/hindi/mangal/remington-gail/learn/rg-1',
     label: 'Mangal (Unicode)',
     desc: 'Remington, InScript & CBI',
   },
