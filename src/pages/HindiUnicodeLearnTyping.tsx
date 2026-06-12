@@ -59,7 +59,7 @@ export default function HindiUnicodeLearnTyping() {
   const target = exercises[exIndex] || ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const onKeyDown = useHindiLayoutInput(layout, session, target)
+  const { onKeyDown, pending: pendingMatra } = useHindiLayoutInput(layout, session, target)
 
   useEffect(() => {
     session.reset()
@@ -85,7 +85,7 @@ export default function HindiUnicodeLearnTyping() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isDone, session.finishedAt])
 
-  const nextKey = nextKeyToward(layout, session.typed, target)
+  const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra)
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
@@ -298,6 +298,14 @@ export default function HindiUnicodeLearnTyping() {
                       {ch === '\n' ? '\u21B5\n' : ch}
                     </span>
                   ))}
+                  {pendingMatra && (
+                    <span
+                      className="rounded bg-amber-400/20 px-0.5 text-amber-300"
+                      title="short-i matra held — now type its consonant"
+                    >
+                      {'\u25CC\u093F'}
+                    </span>
+                  )}
                   <span className="animate-pulse text-brand-400">▎</span>
                 </div>
               )}

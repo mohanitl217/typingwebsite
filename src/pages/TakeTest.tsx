@@ -156,7 +156,11 @@ export default function TakeTest({
   const session = useTypingSession(target, settings)
 
   // Unicode layout IME handler (used only when `unicodeLayout` is set).
-  const layoutKeyDown = useHindiLayoutInput(unicodeLayout ?? hindiLayouts[0], session, target)
+  const { onKeyDown: layoutKeyDown, pending: pendingMatra } = useHindiLayoutInput(
+    unicodeLayout ?? hindiLayouts[0],
+    session,
+    target,
+  )
 
   useEffect(() => {
     session.reset()
@@ -427,6 +431,9 @@ export default function TakeTest({
             {ch === '\n' ? '\u21B5\n' : ch === '\t' ? '\u2192\t' : ch}
           </span>
         ))}
+        {unicodeLayout && pendingMatra && (
+          <span className="rounded bg-amber-100 px-0.5 text-amber-700">{'\u25CC\u093F'}</span>
+        )}
         {!session.finishedAt && <span className="animate-pulse text-brand-500">▎</span>}
       </div>
 

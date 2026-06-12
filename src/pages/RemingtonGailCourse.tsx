@@ -73,7 +73,11 @@ export default function RemingtonGailCourse() {
   const target = exercise?.text ?? ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const onKeyDown = useHindiLayoutInput(REMINGTON_GAIL, session, target)
+  const { onKeyDown, pending: pendingMatra } = useHindiLayoutInput(
+    REMINGTON_GAIL,
+    session,
+    target,
+  )
 
   useEffect(() => {
     session.reset()
@@ -108,7 +112,7 @@ export default function RemingtonGailCourse() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isDone, session.finishedAt])
 
-  const nextKey = nextKeyToward(REMINGTON_GAIL, session.typed, target)
+  const nextKey = nextKeyToward(REMINGTON_GAIL, session.typed, target, pendingMatra)
 
   function goToExercise(idx: number) {
     if (idx >= 0 && idx < remingtonGailExercises.length) {
@@ -349,6 +353,14 @@ export default function RemingtonGailCourse() {
                   {ch === '\n' ? '\u21B5\n' : ch}
                 </span>
               ))}
+              {pendingMatra && (
+                <span
+                  className="rounded bg-amber-400/20 px-0.5 text-amber-300"
+                  title="short-i matra held — now type its consonant"
+                >
+                  {'\u25CC\u093F'}
+                </span>
+              )}
               <span className="animate-pulse text-brand-400">▎</span>
             </div>
           )}

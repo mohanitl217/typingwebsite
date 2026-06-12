@@ -58,9 +58,18 @@ export interface HindiLayout {
    * (consonant + virama) turns it back into the full consonant (drops virama).
    */
   dropViramaOnAA?: boolean
+  /**
+   * Remington behaviour: the short-i matra (ि, U+093F) is keyed BEFORE its
+   * consonant (on the typewriter it visually sits to the left of the letter).
+   * When true, the input hook "floats" a pressed ि and attaches it after the
+   * next consonant cluster — producing correct Unicode order (e.g. ि then क →
+   * कि) — and the on-screen key hint guides the learner to press ि first.
+   */
+  shortIBeforeConsonant?: boolean
 }
 
 const V = '\u094D' // virama / halant
+const SHORT_I = '\u093F' // ि — short-i matra (rendered to the LEFT of its consonant)
 
 /** True if `ch` is a Devanagari consonant (incl. nukta consonants). */
 export function isConsonant(ch: string | undefined): boolean {
@@ -255,6 +264,7 @@ export const hindiLayouts: HindiLayout[] = [
     keys: remingtonGailKeys,
     combines: remingtonGailCombines,
     dropViramaOnAA: true,
+    shortIBeforeConsonant: true,
   },
   {
     id: 'inscript',
@@ -272,6 +282,7 @@ export const hindiLayouts: HindiLayout[] = [
     keys: remingtonCbiKeys,
     combines: remingtonCbiCombines,
     dropViramaOnAA: true,
+    shortIBeforeConsonant: true,
   },
 ]
 
@@ -350,6 +361,19 @@ function commonPrefixLen(a: string, b: string): number {
 }
 
 /**
+ * True if `s` begins with a consonant cluster (a consonant, optionally extended
+ * by virama-joined consonants) immediately followed by the short-i matra ि.
+ * On Remington layouts that matra is keyed BEFORE its consonant, so when such a
+ * syllable is the next thing to type we point the learner at the ि key first.
+ */
+function startsWithConsonantThenShortI(s: string): boolean {
+  if (!isConsonant(s[0])) return false
+  let i = 1
+  while (s[i] === V && isConsonant(s[i + 1])) i += 2
+  return s[i] === SHORT_I
+}
+
+/**
  * Can the still-uncommitted buffer suffix `tail` evolve — purely through the
  * layout's contextual combine rules — into something that begins the target
  * text we still need (`need`)? Used to prune the keystroke search so we only
@@ -417,8 +441,23 @@ export function nextKeyToward(
   layout: HindiLayout,
   typed: string,
   target: string,
+  pendingShortI = false,
 ): { code: string; shift: boolean } | null {
   if (!target || typed === target) return null
+
+  // Remington: the short-i matra ि is keyed BEFORE its consonant. If the next
+  // syllable is <consonant cluster> + ि and that matra has not been pressed yet
+  // (pendingShortI === false), point the learner at the ि key first. The BFS
+  // below would otherwise prune the standalone ि and suggest the consonant —
+  // the wrong order for this layout. Once ि is held (pendingShortI === true),
+  // we fall through so the search guides them to the consonant next.
+  if (layout.shortIBeforeConsonant && !pendingShortI) {
+    const sm = commonPrefixLen(typed, target)
+    if (startsWithConsonantThenShortI(target.slice(sm))) {
+      return findKeyForNext(layout, SHORT_I)
+    }
+  }
+
   const startMatch = commonPrefixLen(typed, target)
   const committed = target.slice(0, startMatch)
   const need = target.slice(startMatch)
