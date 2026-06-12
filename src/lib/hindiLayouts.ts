@@ -58,6 +58,14 @@ export interface HindiLayout {
    * (consonant + virama) turns it back into the full consonant (drops virama).
    */
   dropViramaOnAA?: boolean
+  /**
+   * Remington typewriter behaviour for the short-i matra (ि, U+093F): it is
+   * physically keyed BEFORE its consonant, but stored AFTER it in Unicode
+   * (क + ि = कि). When true, a pending ि typed before a consonant is reordered
+   * to sit after that consonant, and the on-screen key guidance suggests ि
+   * first, then the consonant.
+   */
+  preBaseI?: boolean
 }
 
 const V = '\u094D' // virama / halant
@@ -255,6 +263,7 @@ export const hindiLayouts: HindiLayout[] = [
     keys: remingtonGailKeys,
     combines: remingtonGailCombines,
     dropViramaOnAA: true,
+    preBaseI: true,
   },
   {
     id: 'inscript',
@@ -272,6 +281,7 @@ export const hindiLayouts: HindiLayout[] = [
     keys: remingtonCbiKeys,
     combines: remingtonCbiCombines,
     dropViramaOnAA: true,
+    preBaseI: true,
   },
 ]
 
@@ -315,6 +325,25 @@ export function processLayoutKey(
 ): KeyOutput | null {
   const base = rawKeyOutput(layout, code, shift, altgr)
   if (base == null) return null
+
+  // Remington pre-base short-i: the ि matra (U+093F) is keyed BEFORE its
+  // consonant but stored AFTER it in Unicode (so क + ि renders/stores as कि).
+  // If a "pending" ि sits at the end of the buffer — i.e. it is not yet attached
+  // to a base consonant — and the user now types a full consonant or akshara
+  // (output that begins with a consonant and does not end in a virama), move the
+  // ि to after that consonant. This makes authentic typewriter order ि → क
+  // produce कि instead of the wrong िक.
+  if (layout.preBaseI && base && isConsonant(base[0]) && !base.endsWith(V)) {
+    const SHORT_I = '\u093F'
+    const prev = typed[typed.length - 2]
+    if (
+      typed.endsWith(SHORT_I) &&
+      !isConsonant(prev) &&
+      prev !== '\u093C' // not a nukta-attached consonant (e.g. क़ि)
+    ) {
+      return { remove: 1, insert: base + SHORT_I }
+    }
+  }
 
   // Remington half-consonant model: these layouts emit certain consonants as
   // their half form (consonant + virama). The next vowel "completes" them:
@@ -422,6 +451,23 @@ export function nextKeyToward(
   const startMatch = commonPrefixLen(typed, target)
   const committed = target.slice(0, startMatch)
   const need = target.slice(startMatch)
+
+  // Remington pre-base short-i guidance: for a simple "consonant + ि" syllable,
+  // teach the authentic typewriter order — press ि FIRST, then the consonant.
+  // (The IME reorders ि to sit after the consonant; see processLayoutKey.)
+  // We only lead with ि when it cannot wrongly attach to a preceding consonant
+  // (e.g. the second क in "ककि"); otherwise we let the search guide the
+  // consonant first, which still yields correct output.
+  if (layout.preBaseI && need && isConsonant(need[0]) && need[1] === '\u093F') {
+    const extra = typed.slice(startMatch)
+    const last = typed[typed.length - 1]
+    if (extra === '\u093F') {
+      return findKeyForNext(layout, need[0]) // pending ि already typed → now the consonant
+    }
+    if (extra === '' && !isConsonant(last) && last !== V && !isMatra(last)) {
+      return findKeyForNext(layout, '\u093F') // safe to press ि first
+    }
+  }
 
   // Breadth-first search over key presses. We look for the shortest keystroke
   // sequence that turns the current buffer into a strictly LONGER correct prefix
