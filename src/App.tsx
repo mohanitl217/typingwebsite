@@ -8,6 +8,7 @@ import TakeTest from './pages/TakeTest'
 import NumberTyping from './pages/NumberTyping'
 import HindiLearnTyping from './pages/HindiLearnTyping'
 import HindiUnicodeLearnTyping from './pages/HindiUnicodeLearnTyping'
+import RemingtonGailCourse from './pages/RemingtonGailCourse'
 import AdminDashboard from './pages/AdminDashboard'
 import { getHindiLayout, hindiLayouts } from './lib/hindiLayouts'
 
@@ -59,6 +60,13 @@ export default function App() {
             />
           </Layout>
         }
+      />
+
+      {/* Hindi Typing — Remington GAIL dedicated course (exercise list + drill) */}
+      <Route path="/hindi/remington-gail" element={<Layout><RemingtonGailCourse /></Layout>} />
+      <Route
+        path="/hindi/remington-gail/:exerciseId"
+        element={<Layout><RemingtonGailCourse /></Layout>}
       />
 
       {/* Hindi Typing — Mangal Unicode (Remington GAIL / InScript / Remington CBI) */}

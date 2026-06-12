@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { mangalLessons, getMangalLesson } from '../data/mangalLessons'
-import { remingtonGailLessons, getRemingtonGailLesson } from '../data/remingtonGailLessons'
 import {
   getHindiLayout,
   hindiLayouts,
@@ -22,35 +21,12 @@ import { api, getStoredUser } from '../api'
 
 const STAGES = ['Read Instructions', 'Learn Keys', 'Practice Words', 'Type Paragraphs'] as const
 
-/* ------------------------------------------------------------------ */
-/* Lesson-completion progress (persisted per layout in localStorage)   */
-/* ------------------------------------------------------------------ */
-function progressKey(layoutId: string) {
-  return `hindi-unicode-progress:${layoutId}`
-}
-function loadCompleted(layoutId: string): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(progressKey(layoutId)) || '{}')
-  } catch {
-    return {}
-  }
-}
-function exerciseKey(lessonId: string, stage: number, exIndex: number) {
-  return `${lessonId}|${stage}|${exIndex}`
-}
-
 export default function HindiUnicodeLearnTyping() {
   const { layout: layoutSlug, lessonId } = useParams()
   const navigate = useNavigate()
   const layout = getHindiLayout(layoutSlug) || hindiLayouts[0]
-  // Remington (GAIL) has its own full 61-lesson course; the other Unicode
-  // layouts share the shorter Mangal course.
-  const isRemingtonGail = layout.id === 'remington-gail'
-  const courseLessons = isRemingtonGail ? remingtonGailLessons : mangalLessons
-  const lesson =
-    (isRemingtonGail ? getRemingtonGailLesson(lessonId || '') : getMangalLesson(lessonId || '')) ||
-    courseLessons[0]
-  const lessonIndex = courseLessons.findIndex((l) => l.id === lesson.id)
+  const lesson = getMangalLesson(lessonId || '') || mangalLessons[0]
+  const lessonIndex = mangalLessons.findIndex((l) => l.id === lesson.id)
 
   const [stage, setStage] = useState(0)
   const [exIndex, setExIndex] = useState(0)
@@ -60,12 +36,6 @@ export default function HindiUnicodeLearnTyping() {
   const [showKeyboard, setShowKeyboard] = useState(true)
   const [showStatusBar, setShowStatusBar] = useState(false)
   const [showResult, setShowResult] = useState(false)
-  const [completed, setCompleted] = useState<Record<string, boolean>>(() => loadCompleted(layout.id))
-
-  // Reload saved completion marks whenever the active layout changes.
-  useEffect(() => {
-    setCompleted(loadCompleted(layout.id))
-  }, [layout.id])
 
   const [settings, setSettings] = useState({
     backspaceMode: 'full' as BackspaceMode,
@@ -100,18 +70,6 @@ export default function HindiUnicodeLearnTyping() {
   useEffect(() => {
     if (session.isDone && session.finishedAt) {
       setShowResult(true)
-      // Persist this exercise as completed (for the ✓ / "Complete" markers).
-      const key = exerciseKey(lesson.id, stage, exIndex)
-      setCompleted((prev) => {
-        if (prev[key]) return prev
-        const next = { ...prev, [key]: true }
-        try {
-          localStorage.setItem(progressKey(layout.id), JSON.stringify(next))
-        } catch {
-          /* ignore quota / privacy-mode errors */
-        }
-        return next
-      })
       const user = getStoredUser()
       api
         .saveResult({
@@ -131,8 +89,8 @@ export default function HindiUnicodeLearnTyping() {
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
-    if (ni >= 0 && ni < courseLessons.length) {
-      navigate(`/hindi/mangal/${layout.slug}/learn/${courseLessons[ni].id}`)
+    if (ni >= 0 && ni < mangalLessons.length) {
+      navigate(`/hindi/mangal/${layout.slug}/learn/${mangalLessons[ni].id}`)
       setStage(0)
       setExIndex(0)
     }
@@ -144,32 +102,29 @@ export default function HindiUnicodeLearnTyping() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-accent-600">
-            Hindi (Mangal Unicode) • {layout.label} • Lesson {lessonIndex + 1} of {courseLessons.length}
+            Hindi (Mangal Unicode) • {layout.label} • Lesson {lessonIndex + 1} of {mangalLessons.length}
           </div>
           <h1 className="text-xl font-extrabold text-slate-900">{lesson.title}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {hindiLayouts.map((l) => {
-            // Each layout may use a different lesson set; keep the same lesson
-            // position when switching, falling back to a valid id.
-            const targetLessons = l.id === 'remington-gail' ? remingtonGailLessons : mangalLessons
-            const targetLessonId =
-              targetLessons[Math.min(lessonIndex, targetLessons.length - 1)]?.id ?? targetLessons[0].id
-            return (
-              <Link
-                key={l.id}
-                to={`/hindi/mangal/${l.slug}/learn/${targetLessonId}`}
-                className={[
-                  'rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition',
-                  l.id === layout.id
-                    ? 'bg-brand-600 text-white ring-brand-700'
-                    : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50',
-                ].join(' ')}
-              >
-                {l.label}
-              </Link>
-            )
-          })}
+          {hindiLayouts.map((l) => (
+            <Link
+              key={l.id}
+              to={
+                l.id === 'remington-gail'
+                  ? '/hindi/remington-gail'
+                  : `/hindi/mangal/${l.slug}/learn/${lesson.id}`
+              }
+              className={[
+                'rounded-lg px-3 py-1.5 text-xs font-semibold ring-1 transition',
+                l.id === layout.id
+                  ? 'bg-brand-600 text-white ring-brand-700'
+                  : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50',
+              ].join(' ')}
+            >
+              {l.label}
+            </Link>
+          ))}
         </div>
       </div>
 
@@ -187,15 +142,15 @@ export default function HindiUnicodeLearnTyping() {
             setExIndex(0)
           }}
         >
-          {courseLessons.map((l, i) => (
+          {mangalLessons.map((l, i) => (
             <option key={l.id} value={l.id}>
-              {completed[exerciseKey(l.id, 1, 0)] ? '✓ ' : ''}{i + 1}. {l.title}
+              {i + 1}. {l.title}
             </option>
           ))}
         </select>
         <button
           className="btn-ghost"
-          disabled={lessonIndex === courseLessons.length - 1}
+          disabled={lessonIndex === mangalLessons.length - 1}
           onClick={() => changeLesson(1)}
         >
           Next ›
@@ -256,19 +211,6 @@ export default function HindiUnicodeLearnTyping() {
             <Instructions lesson={lesson} onStart={() => setStage(1)} />
           ) : (
             <>
-              {(session.isDone || completed[exerciseKey(lesson.id, stage, exIndex)]) && (
-                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-700 ring-1 ring-emerald-200">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-white">
-                    ✓
-                  </span>
-                  Complete
-                  {session.isDone && (
-                    <span className="ml-auto font-semibold text-emerald-600">
-                      {session.stats.wpm} WPM • {session.stats.accuracy}% accuracy
-                    </span>
-                  )}
-                </div>
-              )}
               {imageStyle ? (
                 <LineTyping
                   target={target}
@@ -308,7 +250,7 @@ export default function HindiUnicodeLearnTyping() {
                   >
                     {exercises.map((_, i) => (
                       <option key={i} value={i}>
-                        {completed[exerciseKey(lesson.id, stage, i)] ? '✓ ' : ''}Exercise {i + 1} / {exercises.length}
+                        Exercise {i + 1} / {exercises.length}
                       </option>
                     ))}
                   </select>
