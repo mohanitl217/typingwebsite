@@ -63,7 +63,7 @@ export default function HindiUnicodeLearnTyping() {
   const target = exercises[exIndex] || ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const { onKeyDown, pending: pendingMatra, flash } = useHindiLayoutInput(layout, session, target)
+  const { onKeyDown, pending: pendingMatra, pendingHalf, flash } = useHindiLayoutInput(layout, session, target)
 
   useEffect(() => {
     session.reset()
@@ -89,12 +89,12 @@ export default function HindiUnicodeLearnTyping() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isDone, session.finishedAt])
 
-  const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra)
+  const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra, pendingHalf)
   const cursorIndex = typingCursorIndex(layout, session.typed, target, pendingMatra)
   const floatedIndex = pendingMatra ? floatedMatraIndex(layout, session.typed, target) : null
   const strip = useMemo(
-    () => buildTypingStrip(layout, target, session.typed, pendingMatra),
-    [layout, target, session.typed, pendingMatra],
+    () => buildTypingStrip(layout, target, session.typed, pendingMatra, pendingHalf),
+    [layout, target, session.typed, pendingMatra, pendingHalf],
   )
   const incompleteStart = incompleteAksharaStart(target, session.typed.length)
 
@@ -326,6 +326,14 @@ export default function HindiUnicodeLearnTyping() {
                       title="short-i matra held — now type its consonant"
                     >
                       {'\u25CC\u093F'}
+                    </span>
+                  )}
+                  {pendingHalf && (
+                    <span
+                      className="rounded bg-amber-400/20 px-0.5 text-amber-300"
+                      title="half letter typed — now press the ा completer"
+                    >
+                      {pendingHalf + '\u094D'}
                     </span>
                   )}
                   <span
