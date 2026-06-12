@@ -77,7 +77,7 @@ export default function RemingtonGailCourse() {
   const target = exercise?.text ?? ''
   const session = useTypingSession(target, settings)
   const surfaceRef = useRef<HTMLDivElement>(null)
-  const { onKeyDown, pending: pendingMatra, flash } = useHindiLayoutInput(
+  const { onKeyDown, pending: pendingMatra, pendingHalf, flash } = useHindiLayoutInput(
     REMINGTON_GAIL,
     session,
     target,
@@ -116,14 +116,14 @@ export default function RemingtonGailCourse() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isDone, session.finishedAt])
 
-  const nextKey = nextKeyToward(REMINGTON_GAIL, session.typed, target, pendingMatra)
+  const nextKey = nextKeyToward(REMINGTON_GAIL, session.typed, target, pendingMatra, pendingHalf)
   const cursorIndex = typingCursorIndex(REMINGTON_GAIL, session.typed, target, pendingMatra)
   const floatedIndex = pendingMatra
     ? floatedMatraIndex(REMINGTON_GAIL, session.typed, target)
     : null
   const strip = useMemo(
-    () => buildTypingStrip(REMINGTON_GAIL, target, session.typed, pendingMatra),
-    [target, session.typed, pendingMatra],
+    () => buildTypingStrip(REMINGTON_GAIL, target, session.typed, pendingMatra, pendingHalf),
+    [target, session.typed, pendingMatra, pendingHalf],
   )
   const incompleteStart = incompleteAksharaStart(target, session.typed.length)
 
@@ -383,6 +383,14 @@ export default function RemingtonGailCourse() {
                   title="short-i matra held — now type its consonant"
                 >
                   {'\u25CC\u093F'}
+                </span>
+              )}
+              {pendingHalf && (
+                <span
+                  className="rounded bg-amber-400/20 px-0.5 text-amber-300"
+                  title="half letter typed — now press the ा completer"
+                >
+                  {pendingHalf + '\u094D'}
                 </span>
               )}
               <span

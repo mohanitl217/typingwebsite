@@ -4,6 +4,7 @@ import {
   processLayoutKey,
   rawKeyOutput,
   isConsonant,
+  isHalfOnlyConsonant,
   shortIClusterLen,
   type HindiLayout,
 } from './hindiLayouts'
@@ -29,6 +30,8 @@ const MODIFIER_KEYS = new Set([
 ])
 
 const SHORT_I = '\u093F' // ि — short-i matra (keyed BEFORE its consonant on Remington)
+const V = '\u094D' // virama / halant
+const AA = '\u093E' // ा — aa-matra / inherent-vowel completer
 
 /** True if `out` ends with a full consonant (so a floating short-i can attach). */
 function endsWithFullConsonant(out: string): boolean {
@@ -40,6 +43,8 @@ export interface HindiLayoutInput {
   onKeyDown: (e: React.KeyboardEvent) => void
   /** a short-i matra has been pressed and is waiting for its consonant */
   pending: boolean
+  /** a half-only consonant (e.g. ण) whose half form is held, waiting for ा */
+  pendingHalf: string | null
   /** brief true pulse when a wrong / out-of-order key was rejected */
   flash: boolean
 }
@@ -51,18 +56,17 @@ export interface HindiLayoutInput {
  * provisional character before inserting the combined one; because the session
  * uses functional state updates these compose correctly within one event.
  *
- * Remington short-i ORDER: on layouts where `shortIBeforeConsonant` is set, the
- * short-i matra (ि) is keyed BEFORE its consonant (it visually sits to the
- * left). This hook ENFORCES that order against the target:
- *  - at a "matra-first" position the ि key must be pressed first; it is held
- *    ("floating") and nothing is committed yet;
- *  - the next consonant cluster then commits as `<consonant…> + ि`, so the
- *    stored Unicode stays correct (ि then क → कि, never the broken िक);
- *  - pressing the consonant (or anything else) before the ि — or pressing ि
- *    where none is expected — is rejected: it is blocked, counted as an error,
- *    and `flash` pulses so the surface can show it as wrong.
- * The returned `pending` flag lets the page move the cursor / key hint onto the
- * consonant while the matra is floating.
+ * Remington short-i ORDER: where `shortIBeforeConsonant` is set, the short-i
+ * matra (ि) is keyed BEFORE its consonant — it is held ("floating") and the
+ * next consonant commits as `<consonant…> + ि`.
+ *
+ * Remington half-only consonants: letters like ण/थ/श/ख/ध/भ/घ exist on the
+ * keyboard only as a half form (ण्). The full letter is keyed as the half form
+ * THEN the ा completer (which drops the virama). To make that an explicit,
+ * consistent two-step sequence — and to show the half form as a step — the half
+ * form is held in `pendingHalf` and committed as the full consonant when ा is
+ * pressed. Pressing anything else first (or in the wrong order) is rejected:
+ * blocked, counted as an error, and `flash` pulses.
  */
 export function useHindiLayoutInput(
   layout: HindiLayout,
@@ -70,14 +74,20 @@ export function useHindiLayoutInput(
   target: string,
 ): HindiLayoutInput {
   const [pendingShortI, setPendingShortI] = useState(false)
+  const [pendingHalf, setPendingHalfState] = useState<string | null>(null)
   const [flash, setFlash] = useState(false)
-  // Ref mirror so the (memoised) key handler always reads the latest value.
+  // Ref mirrors so the (memoised) key handler always reads the latest values.
   const pendingRef = useRef(false)
+  const halfRef = useRef<string | null>(null)
   const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const setPending = useCallback((v: boolean) => {
     pendingRef.current = v
     setPendingShortI(v)
+  }, [])
+  const setHalf = useCallback((v: string | null) => {
+    halfRef.current = v
+    setPendingHalfState(v)
   }, [])
 
   const pulseFlash = useCallback(() => {
@@ -86,14 +96,15 @@ export function useHindiLayoutInput(
     flashTimer.current = setTimeout(() => setFlash(false), 300)
   }, [])
 
-  // Drop any floating matra / flash when the drill text changes or resets.
+  // Drop any pending state / flash when the drill text changes or resets.
   useEffect(() => {
     setPending(false)
+    setHalf(null)
     setFlash(false)
     return () => {
       if (flashTimer.current) clearTimeout(flashTimer.current)
     }
-  }, [target, setPending])
+  }, [target, setPending, setHalf])
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -101,9 +112,13 @@ export function useHindiLayoutInput(
 
       if (e.key === 'Backspace') {
         e.preventDefault()
-        // A floating short-i is cancelled first, before deleting committed text.
+        // A held half form / floating short-i is cancelled before deleting text.
         if (pendingRef.current) {
           setPending(false)
+          return
+        }
+        if (halfRef.current) {
+          setHalf(null)
           return
         }
         session.handleBackspace()
@@ -113,6 +128,7 @@ export function useHindiLayoutInput(
         if (target.includes('\n')) {
           e.preventDefault()
           if (pendingRef.current) setPending(false)
+          if (halfRef.current) setHalf(null)
           session.handleChar('\n')
         }
         return
@@ -121,10 +137,10 @@ export function useHindiLayoutInput(
 
       const altgr =
         e.getModifierState?.('AltGraph') === true || (e.altKey && e.ctrlKey)
+      const base = rawKeyOutput(layout, e.code, e.shiftKey, altgr)
 
       // --- Remington: the short-i matra ि is typed BEFORE its consonant. ---
       if (layout.shortIBeforeConsonant) {
-        const base = rawKeyOutput(layout, e.code, e.shiftKey, altgr)
         const matraFirst = shortIClusterLen(target.slice(session.typed.length)) > 0
 
         if (pendingRef.current) {
@@ -138,8 +154,7 @@ export function useHindiLayoutInput(
           if (!res) return
           e.preventDefault()
           if (endsWithFullConsonant(res.insert)) {
-            // Attach: emit the consonant cluster, then the held ि after it, so
-            // the stored Unicode is consonant-first (कि) while typing was ि-first.
+            // Attach: emit the consonant cluster, then the held ि after it.
             for (let i = 0; i < res.remove; i++) session.popChar()
             for (const ch of res.insert) session.handleChar(ch)
             session.handleChar(SHORT_I)
@@ -176,6 +191,42 @@ export function useHindiLayoutInput(
         }
       }
 
+      // --- Remington: half-only consonants (ण = ण् + ा), keyed as two steps. ---
+      if (layout.dropViramaOnAA) {
+        if (halfRef.current) {
+          const C = halfRef.current
+          if (base === AA) {
+            // The ा completer turns the held half form into the full consonant.
+            e.preventDefault()
+            session.handleChar(C)
+            setHalf(null)
+            return
+          }
+          if (base === C + V) {
+            e.preventDefault() // re-pressing the same half form changes nothing
+            return
+          }
+          if (base == null) return // ignore keys outside the layout
+          // Anything other than the ा completer is the wrong next step → reject.
+          e.preventDefault()
+          session.markError()
+          pulseFlash()
+          return
+        }
+
+        // A half-form key whose full consonant the target wants here is held,
+        // so the ा completer can finish it as an explicit second step.
+        if (base && base.length === 2 && base[1] === V && isConsonant(base[0])) {
+          const C = base[0]
+          const m = session.typed.length
+          if (isHalfOnlyConsonant(layout, C) && target[m] === C && target[m + 1] !== V) {
+            e.preventDefault()
+            setHalf(C)
+            return
+          }
+        }
+      }
+
       const res = processLayoutKey(layout, session.typed, e.code, e.shiftKey, altgr)
       if (!res) return
 
@@ -183,11 +234,11 @@ export function useHindiLayoutInput(
       for (let i = 0; i < res.remove; i++) session.popChar()
       for (const ch of res.insert) session.handleChar(ch)
     },
-    [layout, session, target, setPending, pulseFlash],
+    [layout, session, target, setPending, setHalf, pulseFlash],
   )
 
   return useMemo(
-    () => ({ onKeyDown, pending: pendingShortI, flash }),
-    [onKeyDown, pendingShortI, flash],
+    () => ({ onKeyDown, pending: pendingShortI, pendingHalf, flash }),
+    [onKeyDown, pendingShortI, pendingHalf, flash],
   )
 }

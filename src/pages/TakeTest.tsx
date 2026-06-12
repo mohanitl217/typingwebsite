@@ -159,6 +159,7 @@ export default function TakeTest({
   const {
     onKeyDown: layoutKeyDown,
     pending: pendingMatra,
+    pendingHalf,
     flash,
   } = useHindiLayoutInput(unicodeLayout ?? hindiLayouts[0], session, target)
 
@@ -433,6 +434,9 @@ export default function TakeTest({
         ))}
         {unicodeLayout && pendingMatra && (
           <span className="rounded bg-amber-100 px-0.5 text-amber-700">{'\u25CC\u093F'}</span>
+        )}
+        {unicodeLayout && pendingHalf && (
+          <span className="rounded bg-amber-100 px-0.5 text-amber-700">{pendingHalf + '\u094D'}</span>
         )}
         {!session.finishedAt && (
           <span

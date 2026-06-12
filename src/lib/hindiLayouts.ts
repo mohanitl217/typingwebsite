@@ -70,6 +70,7 @@ export interface HindiLayout {
 
 const V = '\u094D' // virama / halant
 const SHORT_I = '\u093F' // ि — short-i matra (rendered to the LEFT of its consonant)
+const AA = '\u093E' // ा — aa-matra, also the inherent-vowel completer on Remington
 
 /** True if `ch` is a Devanagari consonant (incl. nukta consonants). */
 export function isConsonant(ch: string | undefined): boolean {
@@ -375,6 +376,40 @@ export function shortIClusterLen(s: string): number {
 }
 
 /**
+ * Set of consonants this layout produces ONLY in half form (consonant + virama)
+ * — there is a key for `C्` but none for the bare full `C`. Such a consonant is
+ * typed as the half form followed by the ा / inherent-vowel completer (which
+ * drops the virama, see `dropViramaOnAA`). Cached per layout.
+ */
+const halfOnlyCache = new WeakMap<HindiLayout, Set<string>>()
+function halfOnlySet(layout: HindiLayout): Set<string> {
+  const cached = halfOnlyCache.get(layout)
+  if (cached) return cached
+  const full = new Set<string>()
+  const half = new Set<string>()
+  for (const k of Object.values(layout.keys)) {
+    for (const out of [k.def, k.shift, k.altgr, k.shiftAltgr]) {
+      if (!out) continue
+      if (out.length === 1 && isConsonant(out)) full.add(out)
+      if (out.length === 2 && out[1] === V && isConsonant(out[0])) half.add(out[0])
+    }
+  }
+  const set = new Set([...half].filter((c) => !full.has(c)))
+  halfOnlyCache.set(layout, set)
+  return set
+}
+
+/**
+ * True if `ch` is a full consonant that this layout can only enter via its half
+ * form + ा completer (e.g. ण, थ, श, ख, ध, भ, घ on Remington GAIL). Typing it is
+ * therefore a two-step sequence: press the half-form key, then the ा completer.
+ */
+export function isHalfOnlyConsonant(layout: HindiLayout, ch: string | undefined): boolean {
+  if (!ch || !layout.dropViramaOnAA) return false
+  return halfOnlySet(layout).has(ch)
+}
+
+/**
  * The target index the on-screen cursor should sit on, honouring the Remington
  * rule that the short-i matra ि is keyed BEFORE its consonant cluster:
  *  - "matra-first" (the ि has not been pressed yet): point at the ि cell, which
@@ -519,6 +554,7 @@ export function buildTypingStrip(
   target: string,
   typed: string,
   pending: boolean,
+  pendingHalf: string | null = null,
 ): StripSegment[] {
   const pos = typed.length
   const cur = typingCursorIndex(layout, typed, target, pending)
@@ -565,14 +601,32 @@ export function buildTypingStrip(
       ? signIdx.find((idx) => target.charCodeAt(idx) === 0x093f)
       : undefined
 
-    const units: number[][] = []
-    if (shortIdx !== undefined) units.push([shortIdx])
-    if (baseIdx.length) units.push(baseIdx)
-    for (const idx of signIdx) if (idx !== shortIdx) units.push([idx])
+    // A standalone half-only consonant (e.g. ण) that has not been entered yet is
+    // shown as TWO steps: its half form (ण्) then the ा completer that turns it
+    // into the full letter — mirroring how it is actually keyed on Remington.
+    const ci = baseIdx[0]
+    const decomposeHalf =
+      shortIdx === undefined &&
+      baseIdx.length === 1 &&
+      ci === pos &&
+      isHalfOnlyConsonant(layout, target[ci])
 
-    for (const u of units) {
-      const status = statusFor(u)
-      segs.push({ text: rangeText(u), status, anchor: status === 'current' })
+    if (shortIdx !== undefined) {
+      const s = statusFor([shortIdx])
+      segs.push({ text: target[shortIdx], status: s, anchor: s === 'current' })
+    }
+    if (decomposeHalf) {
+      const held = pendingHalf === target[ci]
+      segs.push({ text: target[ci] + V, status: held ? 'partial' : 'current', anchor: !held })
+      segs.push({ text: AA, status: held ? 'current' : 'upcoming', anchor: held })
+    } else if (baseIdx.length) {
+      const s = statusFor(baseIdx)
+      segs.push({ text: rangeText(baseIdx), status: s, anchor: s === 'current' })
+    }
+    for (const idx of signIdx) {
+      if (idx === shortIdx) continue
+      const s = statusFor([idx])
+      segs.push({ text: target[idx], status: s, anchor: s === 'current' })
     }
   }
   return segs
@@ -666,8 +720,13 @@ export function nextKeyToward(
   typed: string,
   target: string,
   pendingShortI = false,
+  pendingHalf: string | null = null,
 ): { code: string; shift: boolean } | null {
   if (!target || typed === target) return null
+
+  // A half-only consonant (e.g. ण) whose half form has been pressed is waiting
+  // for its ा completer — point the learner straight at that key.
+  if (pendingHalf) return findKeyForNext(layout, AA)
 
   // Guidance must FOLLOW THE CURSOR. With "Move on Error" enabled, a wrong
   // keystroke is committed into `typed`, so commonPrefixLen() would freeze at
