@@ -43,6 +43,7 @@ const SEGMENT_CLASS: Record<StripSegment['status'], string> = {
   wrong: 'rounded bg-rose-200 text-rose-700',
   current: 'rounded border-2 border-amber-500 bg-amber-50 text-slate-900',
   floated: 'rounded bg-amber-100 text-amber-700 ring-1 ring-amber-300',
+  partial: 'rounded bg-amber-100 text-amber-700',
   upcoming: 'text-slate-400',
 }
 

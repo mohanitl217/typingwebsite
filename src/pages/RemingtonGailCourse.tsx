@@ -11,6 +11,7 @@ import {
   typingCursorIndex,
   floatedMatraIndex,
   buildTypingStrip,
+  incompleteAksharaStart,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -124,6 +125,7 @@ export default function RemingtonGailCourse() {
     () => buildTypingStrip(REMINGTON_GAIL, target, session.typed, pendingMatra),
     [target, session.typed, pendingMatra],
   )
+  const incompleteStart = incompleteAksharaStart(target, session.typed.length)
 
   function goToExercise(idx: number) {
     if (idx >= 0 && idx < remingtonGailExercises.length) {
@@ -364,7 +366,13 @@ export default function RemingtonGailCourse() {
               {[...session.typed].map((ch, i) => (
                 <span
                   key={i}
-                  className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                  className={
+                    ch !== target[i]
+                      ? 'bg-rose-500/40 text-rose-200'
+                      : incompleteStart !== null && i >= incompleteStart
+                        ? 'text-amber-300'
+                        : 'text-emerald-400'
+                  }
                 >
                   {ch === '\n' ? '\u21B5\n' : ch}
                 </span>
