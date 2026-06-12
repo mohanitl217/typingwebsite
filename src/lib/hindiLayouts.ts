@@ -501,7 +501,7 @@ export function splitAksharas(target: string): number[][] {
 export interface StripSegment {
   /** text to render in the cell (a whole cluster, or one component while typing) */
   text: string
-  status: 'done' | 'wrong' | 'current' | 'floated' | 'upcoming'
+  status: 'done' | 'wrong' | 'current' | 'floated' | 'partial' | 'upcoming'
   /** scroll anchor (the active cell) */
   anchor?: boolean
 }
@@ -526,11 +526,14 @@ export function buildTypingStrip(
   const segs: StripSegment[] = []
 
   const rangeText = (idxs: number[]) => target.slice(idxs[0], idxs[idxs.length - 1] + 1)
+  // Status of a unit WITHIN the current (still-incomplete) akshara. A unit that
+  // is fully typed and correct is shown as 'partial' (yellow) rather than green,
+  // so the learner sees the syllable is started but not finished yet.
   const statusFor = (idxs: number[]): StripSegment['status'] => {
     if (idxs.some((k) => k === cur)) return 'current'
     if (idxs.some((k) => k === floated)) return 'floated'
     if (idxs.every((k) => k < pos)) {
-      return idxs.every((k) => typed[k] === target[k]) ? 'done' : 'wrong'
+      return idxs.every((k) => typed[k] === target[k]) ? 'partial' : 'wrong'
     }
     return 'upcoming'
   }
@@ -573,6 +576,25 @@ export function buildTypingStrip(
     }
   }
   return segs
+}
+
+/**
+ * For the plain (non-image) typing surfaces: the start index of the akshara
+ * currently being typed when it is only PARTIALLY typed (a consonant has been
+ * entered but its matra / rest of the cluster has not). Returns null when the
+ * cursor sits on an akshara boundary (nothing of the next akshara typed yet) or
+ * the text is finished. Typed characters at or after this index belong to an
+ * unfinished syllable and can be shown in yellow.
+ */
+export function incompleteAksharaStart(target: string, pos: number): number | null {
+  if (pos <= 0 || pos >= target.length) return null
+  for (const g of splitAksharas(target)) {
+    const start = g[0]
+    const end = g[g.length - 1]
+    if (pos >= start && pos <= end) return start < pos ? start : null
+    if (start > pos) break
+  }
+  return null
 }
 
 /**

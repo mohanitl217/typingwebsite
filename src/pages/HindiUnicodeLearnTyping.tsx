@@ -8,6 +8,7 @@ import {
   typingCursorIndex,
   floatedMatraIndex,
   buildTypingStrip,
+  incompleteAksharaStart,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -95,6 +96,7 @@ export default function HindiUnicodeLearnTyping() {
     () => buildTypingStrip(layout, target, session.typed, pendingMatra),
     [layout, target, session.typed, pendingMatra],
   )
+  const incompleteStart = incompleteAksharaStart(target, session.typed.length)
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
@@ -307,7 +309,13 @@ export default function HindiUnicodeLearnTyping() {
                   {[...session.typed].map((ch, i) => (
                     <span
                       key={i}
-                      className={ch === target[i] ? 'text-emerald-400' : 'bg-rose-500/40 text-rose-200'}
+                      className={
+                        ch !== target[i]
+                          ? 'bg-rose-500/40 text-rose-200'
+                          : incompleteStart !== null && i >= incompleteStart
+                            ? 'text-amber-300'
+                            : 'text-emerald-400'
+                      }
                     >
                       {ch === '\n' ? '\u21B5\n' : ch}
                     </span>
