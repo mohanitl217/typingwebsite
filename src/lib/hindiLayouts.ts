@@ -412,6 +412,36 @@ export function floatedMatraIndex(
 }
 
 /**
+ * The order in which the target's codepoints should be DISPLAYED on a typing
+ * strip for layouts where the short-i matra ि is keyed before its consonant:
+ * each ि is moved to just BEFORE its consonant cluster, so the strip reads in
+ * the same order it is typed (ि then र for रि). Returns an array of target
+ * indices; the underlying text/comparison is unchanged. For every other layout
+ * this is the identity order [0, 1, 2, …].
+ */
+export function displayOrder(layout: HindiLayout, target: string): number[] {
+  const n = target.length
+  const order: number[] = []
+  if (!layout.shortIBeforeConsonant) {
+    for (let i = 0; i < n; i++) order.push(i)
+    return order
+  }
+  let i = 0
+  while (i < n) {
+    const len = shortIClusterLen(target.slice(i))
+    if (len > 0) {
+      order.push(i + len) // the ि comes first…
+      for (let k = 0; k < len; k++) order.push(i + k) // …then its consonant cluster
+      i += len + 1
+    } else {
+      order.push(i)
+      i++
+    }
+  }
+  return order
+}
+
+/**
  * Can the still-uncommitted buffer suffix `tail` evolve — purely through the
  * layout's contextual combine rules — into something that begins the target
  * text we still need (`need`)? Used to prune the keystroke search so we only

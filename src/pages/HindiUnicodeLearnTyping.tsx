@@ -7,6 +7,7 @@ import {
   nextKeyToward,
   typingCursorIndex,
   floatedMatraIndex,
+  displayOrder,
   rawKeyOutput,
   MANGAL_FONT,
   type HindiLayout,
@@ -90,6 +91,7 @@ export default function HindiUnicodeLearnTyping() {
   const nextKey = nextKeyToward(layout, session.typed, target, pendingMatra)
   const cursorIndex = typingCursorIndex(layout, session.typed, target, pendingMatra)
   const floatedIndex = pendingMatra ? floatedMatraIndex(layout, session.typed, target) : null
+  const cellOrder = useMemo(() => displayOrder(layout, target), [layout, target])
 
   function changeLesson(dir: -1 | 1) {
     const ni = lessonIndex + dir
@@ -226,6 +228,7 @@ export default function HindiUnicodeLearnTyping() {
                   cursorIndex={cursorIndex}
                   floatedIndex={floatedIndex}
                   flash={flash}
+                  order={cellOrder}
                 />
               ) : (
                 <TypingText

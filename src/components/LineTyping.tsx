@@ -22,6 +22,12 @@ interface Props {
   floatedIndex?: number | null
   /** Brief pulse: render the current cell as wrong (out-of-order keystroke). */
   flash?: boolean
+  /**
+   * Display order for the cells (array of target indices). Used by Remington
+   * layouts to show the short-i matra ि BEFORE its consonant. Defaults to the
+   * natural order [0, 1, 2, …].
+   */
+  order?: number[]
 }
 
 /**
@@ -41,6 +47,7 @@ export default function LineTyping({
   cursorIndex,
   floatedIndex = null,
   flash = false,
+  order,
 }: Props) {
   const localRef = useRef<HTMLDivElement>(null)
   const containerRef = inputRef ?? localRef
@@ -86,11 +93,12 @@ export default function LineTyping({
             lineHeight: 1,
           }}
         >
-          {target.split('').map((ch, i) => {
-            const typedCh = typed[i]
-            const isTyped = i < pos
-            const isCurrent = i === cur
-            const isFloated = i === floatedIndex
+          {(order ?? target.split('').map((_, i) => i)).map((oi, k) => {
+            const ch = target[oi]
+            const typedCh = typed[oi]
+            const isTyped = oi < pos
+            const isCurrent = oi === cur
+            const isFloated = oi === floatedIndex
             const correct = typedCh === ch
 
             let cls = 'text-indigo-700'
@@ -104,7 +112,7 @@ export default function LineTyping({
 
             return (
               <span
-                key={i}
+                key={k}
                 ref={isCurrent ? cursorRef : undefined}
                 className={`inline-block px-1 ${cls}`}
               >
